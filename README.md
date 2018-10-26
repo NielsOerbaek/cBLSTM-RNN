@@ -1,5 +1,9 @@
 # cBLSTM-RNN
 
+## Google drive folder for text and images
+
+https://drive.google.com/drive/folders/1xXJ3invroqxUuxkygSckr1evK1fbkGED
+
 ## Overall To-Do
 
 https://docs.google.com/document/d/1mFNhxKfwaWCv1qtQ05MDiOFLUftNQzJo2beaI-9Tg8Y/edit#
