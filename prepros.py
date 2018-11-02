@@ -12,7 +12,9 @@ vocab_file = "/aclimdb/imdb.vocab"
 unk_token = "UNK"
 start_token = "<s>"
 end_token = "</s>"
-vocab_size = 10003
+# When you change these, you need to regenerate the data
+vocab_size = 2003
+max_sent_length = 100
 
 
 def make_vocab(path_to_vocab_file):
@@ -20,7 +22,7 @@ def make_vocab(path_to_vocab_file):
     word_to_id = defaultdict(lambda: len(word_to_id))
     with open("." + path_to_vocab_file, "r") as v:
         for i, word in enumerate(v):
-            if i >= 10000:
+            if i >= vocab_size-3:
                 break
             word_to_id[word.strip()]
     # Adding special meta-words
@@ -34,6 +36,20 @@ def make_vocab(path_to_vocab_file):
     id_to_word = {v: k for k, v in word_to_id.items()}
 
     return word_to_id, id_to_word
+
+
+def tokenize_and_pad(sentence):
+    words = []
+    if len(sentence) > 2:
+        words = [start_token]
+        for word in word_tokenize(sentence):
+            words.append(word)
+        words.append(end_token)
+        words = make_sentence_fixed_length(words)
+        # if len(words) > max_sentence_length:
+        # max_sentence_length = len(words)
+        # print(max_sentence_length, filename, words)
+    return words
 
 
 def get_data_dict(path_to_data, limit=0):
@@ -56,22 +72,15 @@ def get_data_dict(path_to_data, limit=0):
                 line = str.lower(line.replace("<br /><br />", "."))
                 line = nsf1.sub("\g<1>. \g<2>", nsf2.sub("\g<1>. \g<2>", line))
                 for j, sentence in enumerate(sent_tokenize(line)):
-                    if len(sentence) > 2:
-                        words = [start_token]
-                        for word in word_tokenize(sentence):
-                            words.append(word)
-                        words.append(end_token)
-                        words = make_sentence_fixed_length(words)
-                        # if len(words) > max_sentence_length:
-                            # max_sentence_length = len(words)
-                            # print(max_sentence_length, filename, words)
+                    words = tokenize_and_pad(sentence)
+                    if len(words) > 2:
                         review[j] = words
             data[i] = review
     # print("\nThe longest sentence we have is", max_sentence_length)
     return data
 
 
-def make_sentence_fixed_length(tokenized_sentence, length=300):
+def make_sentence_fixed_length(tokenized_sentence, length=max_sent_length):
     while len(tokenized_sentence) < length:
         tokenized_sentence.append(unk_token)
     return tokenized_sentence[0:length]
@@ -79,7 +88,7 @@ def make_sentence_fixed_length(tokenized_sentence, length=300):
 
 def words_to_ids(tokenized_sentence, w2i_vocab):
     for i, word in enumerate(tokenized_sentence):
-        tokenized_sentence[i] = int(w2i_vocab[word])
+        tokenized_sentence[i] = w2i_vocab[word]
     return tokenized_sentence
 
 
@@ -88,7 +97,7 @@ def save_data_to_pickle(data, filename):
 
 
 def load_data_from_pickle(filename):
-    return pickle.load(open(filename, "rb"))
+    return pickle.load(open(data_folder + filename, "rb"))
 
 
 # For some reason the json files cannot be decoded. Don't know why yet.
@@ -115,7 +124,7 @@ def get_data_dicts(limit=0):
 
 def load_data_file(filename, limit=0):
     print("Unpacking pickle: " + filename + str(limit))
-    return load_data_from_pickle(data_folder + filenames + str(limit) + ".pickle")
+    return load_data_from_pickle(filenames + str(limit) + ".pickle")
 
 
 def load_all_data_files(limit=0):
@@ -124,7 +133,7 @@ def load_all_data_files(limit=0):
         limit = "ALL"
     for i in range(4):
         print("Unpacking pickle: " + file_names[i] + str(limit))
-        dicts.append(load_data_from_pickle(data_folder + file_names[i] + str(limit) + ".pickle"))
+        dicts.append(load_data_from_pickle(file_names[i] + str(limit) + ".pickle"))
     return dicts[0], dicts[1], dicts[2], dicts[3]
 
 
