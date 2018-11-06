@@ -3,13 +3,14 @@ from sklearn.utils import shuffle
 from keras.models import Sequential
 from keras.models import load_model
 from keras.layers import LSTM
+from keras.layers import GRU
 from keras.layers import Dense
 from keras.layers import TimeDistributed
 
 # Our Preprocessing Library
 import prepros as pp
 
-num_samples = 50
+num_samples = 2000
 
 # -- Preprocessing
 # Vocab files
@@ -80,9 +81,9 @@ if generate_model:
     # define LSTM
     print("Creating model")
     model = Sequential()
-    model.add(LSTM(pp.max_sent_length, input_shape=(pp.max_sent_length, pp.vocab_size), return_sequences=True))
-    model.add(TimeDistributed(Dense(pp.vocab_size)))
-    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.add(LSTM(pp.max_sent_length, input_shape=(pp.max_sent_length, pp.vocab_size), return_sequences=True, dropout=0.2))
+    model.add(TimeDistributed(Dense(pp.vocab_size, activation="sigmoid")))
+    model.compile(loss='categorical_crossentropy', optimizer='adam')
     print(model.summary())
     # train LSTM
     model.fit(train_X, train_y, epochs=10, batch_size=100, verbose=1)
@@ -92,11 +93,7 @@ else:
     model = load_model(model_name)
 
 
-predictions = model.predict(train_X[0:10])
-
-# Måske er der et problem i at punctuation bliver til UNK? - ! og ? er i vocab, men ikke , og ; og -
-# NLTK laver can't om til ca n't, hvilket er noget lort.
-# Måske en mere naiv tokenizer?
+predictions = model.predict(train_X[0:20])
 
 for k in range(len(predictions)):
     print("Input:", pp.one_hots_to_sentence(train_X[k], i2w))

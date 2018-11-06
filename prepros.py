@@ -13,16 +13,17 @@ vocab_file = "/aclimdb/imdb.vocab"
 unk_token = "<UNK>"
 start_token = "<s>"
 end_token = "</s>"
-pad_token = "<PAD>"
+mask_token = "<MASK>"
 # When you change these, you need to regenerate the data
 vocab_size = 10000 + 4
-max_sent_length = 100
+max_sent_length = 30
 tokenizer = RegexpTokenizer(r"\w+'\w+|\w+|\!|\?")
 
 
 def make_vocab(path_to_vocab_file):
     # Making Word-to-ID dict
     word_to_id = defaultdict(lambda: len(word_to_id))
+    word_to_id[mask_token]
     with open("." + path_to_vocab_file, "r") as v:
         for i, word in enumerate(v):
             if i >= vocab_size-4:
@@ -32,7 +33,6 @@ def make_vocab(path_to_vocab_file):
     word_to_id[start_token]
     word_to_id[end_token]
     word_to_id[unk_token]
-    word_to_id[pad_token]
     # All other words will just be UNK
     word_to_id = defaultdict(lambda: word_to_id[unk_token], word_to_id)
 
@@ -81,7 +81,7 @@ def get_data_dict(path_to_data, limit=0):
 
 def make_sentence_fixed_length(tokenized_sentence, length=max_sent_length):
     while len(tokenized_sentence) < length:
-        tokenized_sentence.append(pad_token)
+        tokenized_sentence.append(mask_token)
     return tokenized_sentence[0:length]
 
 
@@ -114,6 +114,16 @@ def one_hots_to_sentence(one_hots, i2w_vocab):
     for w in one_hots:
         w_id = np.argmax(w)
         a.append(i2w_vocab[w_id])
+    s = ""
+    for w in a:
+        s += " " + w
+    return s
+
+
+def ids_to_sentence(ids, i2w_vocab):
+    a = []
+    for w in ids:
+        a.append(i2w_vocab[w])
     s = ""
     for w in a:
         s += " " + w
