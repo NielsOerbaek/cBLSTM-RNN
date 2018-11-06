@@ -34,18 +34,20 @@ if generate_embeddings:
         i += 1
         print(i)
     f.close()
-    pp.save_data_to_pickle(embeddings_index, "glove-6B-300.pickle")
-else:
-    embeddings_index = pp.load_data_from_pickle("glove-6B-300.pickle")
 
-embedding_matrix = np.zeros((pp.vocab_size, 300))
-for word, index in zip(w2i.keys(), w2i.values()):
-    if index > pp.vocab_size - 1:
-        break
-    else:
-        embedding_vector = embeddings_index.get(word)
-        if embedding_vector is not None:
-            embedding_matrix[index] = embedding_vector
+    embedding_matrix = np.zeros((pp.vocab_size, 300))
+    for word, index in zip(w2i.keys(), w2i.values()):
+        if index > pp.vocab_size - 1:
+            break
+        else:
+            embedding_vector = embeddings_index.get(word)
+            if embedding_vector is not None:
+                embedding_matrix[index] = embedding_vector
+
+    pp.save_data_to_pickle(embedding_matrix, "glove-6B-300.pickle")
+else:
+    embedding_matrix = pp.load_data_from_pickle("glove-6B-300.pickle")
+
 
 # Once you have generated the data files, you can outcomment the following line.
 pp.generate_data_files(num_samples)

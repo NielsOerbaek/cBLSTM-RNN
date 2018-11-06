@@ -23,7 +23,6 @@ w2i, i2w = pp.make_vocab(pp.vocab_file)
 
 generate_embeddings = False
 if generate_embeddings:
-    print("Generating embeddings")
     embeddings_index = dict()
     f = open('glove.6B/glove.6B.300d.txt')
     i = 0
@@ -35,41 +34,36 @@ if generate_embeddings:
         i += 1
         print(i)
     f.close()
-    pp.save_data_to_pickle(embeddings_index, "glove-6B-300.pickle")
-else:
-    print("Loading embeddings")
-    embeddings_index = pp.load_data_from_pickle("glove-6B-300.pickle")
 
-embedding_matrix = np.zeros((pp.vocab_size, 300))
-for word, index in zip(w2i.keys(), w2i.values()):
-    if index > pp.vocab_size - 1:
-        break
-    else:
-        embedding_vector = embeddings_index.get(word)
-        if embedding_vector is not None:
-            embedding_matrix[index] = embedding_vector
+    embedding_matrix = np.zeros((pp.vocab_size, 300))
+    for word, index in zip(w2i.keys(), w2i.values()):
+        if index > pp.vocab_size - 1:
+            break
+        else:
+            embedding_vector = embeddings_index.get(word)
+            if embedding_vector is not None:
+                embedding_matrix[index] = embedding_vector
+
+    pp.save_data_to_pickle(embedding_matrix, "glove-6B-300.pickle")
+else:
+    embedding_matrix = pp.load_data_from_pickle("glove-6B-300.pickle")
 
 # Once you have generated the data files, you can outcomment the following line.
 # pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-# For some reason the for loop is only giving us the index here. I dunno why.
-# Convert to sentence level training set:
-# For some reason the for loop is only giving us the index here. I dunno why.
-# Convert to sentence level training seÂt:
+
+def append_data(x_array, y_array, data, label):
+    for i in data:
+        for j in data[i]:
+            x_array.append(np.array(pp.words_to_ids(data[i][j], w2i)))
+            y_array.append(label)
+
+
 train_X = []
 train_y = []
-
-for i in train_pos:
-    for j in train_pos[i]:
-        train_X.append(np.array(pp.words_to_ids(train_pos[i][j], w2i)))
-        train_y.append(1)
-
-for i in train_neg:
-    for j in train_neg[i]:
-        train_X.append(np.array(pp.words_to_ids(train_neg[i][j], w2i)))
-        train_y.append(0)
-
+append_data(train_X, train_y, train_pos, 1)
+append_data(train_X, train_y, train_neg, 0)
 train_X = np.array(train_X)
 train_y = np.array(train_y)
 
