@@ -1,115 +1,109 @@
-import numpy as np
-from sklearn.utils import shuffle
+import os
+import re  # regex
 from keras.models import Sequential
+from keras.layers import Dense, Embedding
 from keras.layers import LSTM
-from keras.layers import Dense
-from keras.layers import TimeDistributed
-from keras.layers import Bidirectional
-from keras.layers import Embedding
-from keras.utils import to_categorical
+from keras.datasets import imdb
+from keras.utils.data_utils import get_file
+import pickle
+from keras.preprocessing.text import text_to_word_sequence
+from keras.preprocessing.sequence import pad_sequences
+from collections import defaultdict
 
-# Our Preprocessing Library
-import prepros as pp
-
-# -- Preprocessing
-# Vocab files
-print("Making vocab dicts of size " + str(pp.vocab_size))
-w2i, i2w = pp.make_vocab(pp.vocab_file)
-
-
-# Once you have generated the data files, you can outcomment the following line.
-pp.generate_data_files(100)
-train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(100)
-
-# For some reason the for loop is only giving us the index here. I dunno why.
-# Convert to sentence level training seÂt:
-train_X = []
-for i in train_pos:
-    for j in train_pos[i]:
-        train_X.append(np.array(pp.words_to_ids(train_pos[i][j], w2i)))
-
-train_X = np.array(train_X)
+max_sent_length = 100  # At least 93 % of all sentences within 40 words
+vocab_size = 20000 + 3
+vocab_file = "./aclimdb/imdb.vocab"
+start = "<s>"
+end = "</s>"
+unk = "<UNK>"
 
 
-def to_one_hot(word_id, vocab_size):
-    v = np.full(vocab_size, 0)
-    v[word_id] = 1
-    return v
+# Create the vocabulary from the vocab file, which is already sorted on the most common words
+def make_vocab(path_to_vocab_file):
+    # Making Word-to-ID dict
+    word_to_id = defaultdict(lambda: len(word_to_id) + 1)
+    with open(path_to_vocab_file, "r") as v:
+        for word in v:
+            if len(word_to_id) >= vocab_size - 3:
+                break
+            word_to_id[word.replace("'","").strip()]
+
+    # Adding special meta-words
+    word_to_id[start]
+    word_to_id[end]
+    word_to_id[unk]
+
+    # All other words will just be UNK
+    word_to_id = defaultdict(lambda: word_to_id[unk], word_to_id)
+
+    # Making ID-to-Word dict
+    id_to_word = {v: k for k, v in word_to_id.items()}
+    return word_to_id, id_to_word
 
 
-def from_one_hot(one_hot_vector):
-    for i, v in enumerate(one_hot_vector):
-        if v == 1:
-            return i
+# TODO: Consider whether to split on "[.?!]+" even though they have an entry in the dictionary
+def get_data(path):
+    train_x = []
+    for file in os.listdir(path):
+        with open(path + "\\" + file, "r", encoding="utf8") as rfile:
+            text = rfile.readline().replace("'","").replace("<br /><br />", ".")
+            sent = filter(None, re.split("[.?!]+", text))
+
+            if ("Baby" in text) & ("Mama" in text) & ("central" in text):
+                if ("gauge" in text) & ("neutered" in text) & ("director" in text):
+                    print("Match found in file: " + file)
+
+            for sentence in sent:
+                temp_x = []
+                token_word = text_to_word_sequence(sentence)
+
+                for word in token_word:
+                    temp_x.append(w2i[word])
+
+                if len(temp_x) == 0:
+                    continue
+
+                # TODO: Temp_x should have the start and end tokens added
+                # TODO: What happens if the end token is cut off by pad_sequences?
+                train_x.append(temp_x)
+
+    return train_x
 
 
-def dataset_to_onehot(dataset):
-    print("Making the one-hot data")
-    x = len(dataset)
-    y = len(dataset[0])
-    z = pp.vocab_size
-    o_h_x = np.ndarray((x, y, z), np.int8)
-    o_h_y = np.ndarray((x, y, z), np.int8)
-    for s in range(x):
-        print(s/x*100)
-        for w in range(y):
-            o_h_x[s][w] = to_one_hot(dataset[s][w], z)
-            o_h_x[s][(w+1) % y] = to_one_hot(dataset[s][w], z)
-    return o_h_x, o_h_y
+print('Build vocab...')
+w2i, i2w = make_vocab(vocab_file)
 
+print('Get the data...')
+x_train_pos = get_data("./aclimdb/train/pos")
+x_train_neg = get_data("./aclimdb/train/neg")
 
-# Storing data to save time
-one_hot_filename = "one-hot-sentenses-100.pickle"
-generate_data = True
-if(generate_data):
-    train_X, train_y = dataset_to_onehot(train_X)
-    print("Saving data")
-    pp.save_data_to_pickle((train_X, train_y), one_hot_filename)
-else:
-    (train_X, train_y) = pp.load_data_from_pickle(one_hot_filename)
+y_train_pos = [1] * len(x_train_pos)
+y_train_neg = [0] * len(x_train_neg)
 
-print(train_X.shape)
-print(train_y.shape)
+x_train = x_train_pos + x_train_neg
+y_train = y_train_pos + y_train_neg
 
+print('Pad the sentences...')
+x_train = pad_sequences(x_train, maxlen = max_sent_length)
+print('x_train shape:', x_train.shape)
+print('y_train shape:', len(y_train))
 
-# Helper functions
-def perplexity(review):
-    product = 1
-    size = 0
-    for sentence in review:
-        size += len(sentence)
-        for wordProb in sentence:
-            product *= wordProb
-    return product**(-1/size)
-
-
-# define LSTM
-print("Creating model")
+print('Build model...')
 model = Sequential()
-model.add(LSTM(pp.max_sent_length, input_shape=(pp.max_sent_length, pp.vocab_size), return_sequences=True))
-model.add(TimeDistributed(Dense(pp.vocab_size)))
-model.compile(loss='mean_squared_error', optimizer='adam')
-print(model.summary())
-# train LSTM
-model.fit(train_X, train_y, epochs=5, batch_size=100, verbose=1)
+model.add(Embedding(vocab_size + 1, 128, mask_zero=True))  # Padding = 0 adds one to the vocab_size
+model.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2))
+model.add(Dense(1, activation='sigmoid'))
 
-#model.save("./model/lstm-pos-lm-2003vocab-100reviews-max-length-100.model")
+# try using different optimizers and different optimizer configs
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
 
-print(model.predict(train_X[0:2]))
+print('Train...')
+model.fit(x_train, y_train,
+          batch_size=32,
+          epochs=15)
 
 
-# Jeppe attempt to improve the above code:
 
-# define LSTM
-print("Creating model")
-model = Sequential()
-model.add(LSTM(pp.max_sent_length, input_shape=(pp.max_sent_length, pp.vocab_size), return_sequences=True))
-model.add(TimeDistributed(Dense(pp.vocab_size)))
-model.compile(loss='mean_squared_error', optimizer='adam')
-print(model.summary())
-# train LSTM
-model.fit(train_X, train_y, epochs=5, batch_size=100, verbose=1)
 
-model.save("./model/lstm-pos-lm-2003vocab-100reviews-max-length-100.model")
-
-print(model.predict(train_X[0:2]))
