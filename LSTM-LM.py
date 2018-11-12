@@ -93,7 +93,7 @@ print(model.summary())
 # train LSTM
 model.fit(train_X, train_y, epochs=5, batch_size=100, verbose=1)
 
-model.save("./model/lstm-pos-lm-2003vocab-100reviews-max-length-100.model")
+#model.save("./model/lstm-pos-lm-2003vocab-100reviews-max-length-100.model")
 
 print(model.predict(train_X[0:2]))
 
