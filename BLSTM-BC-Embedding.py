@@ -11,8 +11,10 @@ from keras.callbacks import ModelCheckpoint
 
 # Our Preprocessing Library
 import prepros as pp
+# Our util functions
+import utils
 
-num_samples = 300
+num_samples = 100
 hidden_size = 300
 
 # -- Preprocessing
@@ -23,64 +25,19 @@ w2i, i2w = pp.make_vocab(pp.vocab_file)
 
 generate_embeddings = False
 if generate_embeddings:
-    embeddings_index = dict()
-    f = open('glove.6B/glove.6B.300d.txt')
-    i = 0
-    for line in f:
-        values = line.split()
-        word = "".join(values[0:-300])
-        coefs = np.asarray(values[-300:], dtype='float32')
-        embeddings_index[word] = coefs
-        i += 1
-        print(i)
-    f.close()
-
-    embedding_matrix = np.zeros((pp.vocab_size, 300))
-    for word, index in zip(w2i.keys(), w2i.values()):
-        if index > pp.vocab_size - 1:
-            break
-        else:
-            embedding_vector = embeddings_index.get(word)
-            if embedding_vector is not None:
-                embedding_matrix[index] = embedding_vector
-
+    embedding_matrix = utils.generate_embedding_matrix('glove.6B/glove.6B.300d.txt', w2i)
     pp.save_data_to_pickle(embedding_matrix, "glove-6B-300.pickle")
 else:
     embedding_matrix = pp.load_data_from_pickle("glove-6B-300.pickle")
 
 # Once you have generated the data files, you can outcomment the following line.
-# pp.generate_data_files(num_samples)
+pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-
-def append_data(x_array, y_array, data, label):
-    for i in data:
-        for j in data[i]:
-            x_array.append(np.array(pp.words_to_ids(data[i][j], w2i)))
-            y_array.append(label)
-
-
-train_X = []
-train_y = []
-append_data(train_X, train_y, train_pos, 1)
-append_data(train_X, train_y, train_neg, 0)
-train_X = np.array(train_X)
-train_y = np.array(train_y)
-
-train_X, train_y = shuffle(train_X, train_y, random_state=42)
-print(train_X.shape, train_X[0])
-print(train_y.shape)
-
-
-# Helper functions
-def perplexity(review):
-    product = 1
-    size = 0
-    for sentence in review:
-        size += len(sentence)
-        for wordProb in sentence:
-            product *= wordProb
-    return product**(-1/size)
+train_X, train_y = utils.make_binary_classifier_dataset(train_pos, train_neg, w2i)
+train_X, train_y = shuffle(train_X, train_y, random_state=420)
+print("Shape of X-data: ", train_X.shape)
+print("Shape of y-data: ", train_y.shape)
 
 
 model_name = "./model/embedding-blstm-bc-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
@@ -99,10 +56,10 @@ if generate_model:
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/glove-emb-BC-model-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/Test-glove-emb-BC-model-{epoch:02d}.hdf5', verbose=1)
 
     # train LSTM
-    model.fit(train_X, train_y, epochs=10, batch_size=100, verbose=1, callbacks=[checkpointer])
+    model.fit(train_X, train_y, epochs=2, batch_size=100, verbose=1, callbacks=[checkpointer])
 
     model.save(model_name)
 else:

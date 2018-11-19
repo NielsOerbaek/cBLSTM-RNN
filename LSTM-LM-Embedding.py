@@ -105,20 +105,10 @@ def data_generator():
         yield x_set, y_set
 
 
-# Helper functions
-def perplexity(review):
-    product = 1
-    size = 0
-    for sentence in review:
-        size += len(sentence)
-        for wordProb in sentence:
-            product *= wordProb
-    return product**(-1/size)
-
 
 model_name = "./model/embedding-lstm-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
-model_name = "./model/glove-emb-model-41.hdf5"
-generate_model = False
+# model_name = "./model/glove-emb-model-41.hdf5"
+generate_model = True
 if generate_model:
     # define LSTM
     print("Creating model")
