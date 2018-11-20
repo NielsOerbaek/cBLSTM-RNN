@@ -29,20 +29,37 @@ def generate_embedding_matrix(glove_filename, w2i):
     return embedding_matrix
 
 
-def append_data(x_array, y_array, data, label, w2i):
+def append_sentences(x_array, y_array, data, label, w2i):
     for i in data:
         for j in data[i]:
             x_array.append(np.array(pp.words_to_ids(data[i][j], w2i)))
             y_array.append(label)
 
 
-def make_binary_classifier_dataset(pos_data, neg_data, w2i):
+def append_reviews(x_array, y_array, data, label, w2i, offset=0):
+    for i in data:
+        dataset_i = i + offset
+        x_array.append(np.zeros((len(data[i]), pp.max_sent_length)))
+        y_array.append(label)
+        for j in data[i]:
+            x_array[dataset_i][j] = np.array(pp.words_to_ids(data[i][j], w2i))
+
+
+def make_binary_classifier_sentence_dataset(pos_data, neg_data, w2i):
     X = []
     y = []
-    append_data(X, y, pos_data, 1, w2i)
-    append_data(X, y, neg_data, 0, w2i)
+    append_sentences(X, y, pos_data, 1, w2i)
+    append_sentences(X, y, neg_data, 0, w2i)
     X = np.array(X)
     y = np.array(y)
+    return X, y
+
+
+def make_binary_classifier_review_dataset(pos_data, neg_data, w2i):
+    X = []
+    y = []
+    append_reviews(X, y, pos_data, 1, w2i)
+    append_reviews(X, y, neg_data, 0, w2i, offset=len(pos_data))
     return X, y
 
 
@@ -53,7 +70,7 @@ def perplexity(review):
     for sentence in review:
         size += len(sentence)
         for wordProb in sentence:
-            product *= wordProb
+            product *= wordProp
     return product**(-1/size)
 
 

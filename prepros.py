@@ -44,7 +44,7 @@ def make_vocab(path_to_vocab_file):
 
 def tokenize_and_pad(sentence):
     words = []
-    if len(sentence) > 2:
+    if len(sentence) > 0:
         words = [start_token]
         for word in tokenizer.tokenize(sentence):
             words.append(word)
