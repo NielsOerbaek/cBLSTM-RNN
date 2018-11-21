@@ -17,7 +17,8 @@ import tensorflow as tf
 # Our Preprocessing Library
 import prepros as pp
 
-num_samples = 5000
+num_reviews = 2000
+batch_size = 50
 hidden_size = 300
 
 # -- Preprocessing
@@ -55,8 +56,8 @@ else:
 
 
 # Once you have generated the data files, you can outcomment the following line.
-pp.generate_data_files(num_samples)
-train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
+pp.generate_data_files(num_reviews)
+train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
 # For some reason the for loop is only giving us the index here. I dunno why.
 # Convert to sentence level training set:
@@ -67,26 +68,35 @@ for i in train_pos:
 
 train_X = np.array(train_X)
 
+num_samples = len(train_X)
+
+
+# Making the y data, which is just one-hot version of the input data
 def make_y(x_dataset):
-    print("Making the y data, which is just one-hot version of the input data")
     x = len(x_dataset)
     y = len(x_dataset[0])
     z = pp.vocab_size
     y_dataset = np.ndarray((x, y, z), np.uint8)
     for s in range(x):
-        if s % 200 == 0:
-            print(math.floor(s/x*100), end=", ", flush=True)
         for w in range(y):
             y_dataset[s][w] = pp.to_one_hot(x_dataset[s][w], z)
-    print("Done.")
     return y_dataset
 
 
-train_y = make_y(train_X)
+def data_generator():
+    generator_counter = 0
+    while generator_counter < num_samples:
+        next_target = generator_counter + batch_size
+        if next_target > num_samples:
+            next_target = num_samples
+        x_set = train_X[generator_counter:next_target]
+        y_set = make_y(x_set)
+        print(" - samples:", generator_counter, "-", next_target)
+        generator_counter = next_target % num_samples
+        yield x_set, y_set
 
 
-print(train_X.shape, train_X[0])
-print(train_y.shape)
+print("Shape of train_X", train_X.shape)
 
 
 # Custom function to merge the forwards and backwards layer of the cBLSTM
@@ -110,18 +120,21 @@ def cBLSTM_merge(tensor_list):
     return merged_tensor
 
 
-model_name = "./model/embedding-lstm-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
-# model_name = "./model/emb-model-40.hdf5"
+model_name = "./model/cBLSTM-pos.model"
 generate_model = True
 if generate_model:
     # define LSTM
     print("Creating model")
-    input = Input(shape=(pp.max_sent_length,))
+    input = Input(shape=(pp.max_sent_length,), name="Input_list_of_word_ids")
 
-    emb = Embedding(pp.vocab_size, hidden_size, input_length=pp.max_sent_length, mask_zero=True,
-                        weights=[embedding_matrix], trainable=False)(input)
+    emb = Embedding(pp.vocab_size, hidden_size,
+                    input_length=pp.max_sent_length,
+                    mask_zero=True,
+                    weights=[embedding_matrix],
+                    trainable=False,
+                    name="Pretrained_word_vectors")(input)
 
-    cBLSTM_forwards = LSTM(pp.max_sent_length-1,
+    cBLSTM_forwards = LSTM(pp.max_sent_length - 1,
                            input_shape=(pp.max_sent_length, hidden_size),
                            return_sequences=True,
                            name="cBLSTM_forwards")(emb)
@@ -133,19 +146,26 @@ if generate_model:
 
     merged = Lambda(cBLSTM_merge, name='cBLSTM_Merge')([cBLSTM_forwards, cBLSTM_backwards])
 
-    time_dist = TimeDistributed(Dense(pp.vocab_size, activation="tanh"))(merged)
+    time_dist = TimeDistributed(Dense(pp.vocab_size, activation="tanh"), name="Dense_layer_for_each_memory_cell")(merged)
 
-    softmax = Activation('softmax')(time_dist)
+    softmax = Activation('softmax', name="Softmax")(time_dist)
 
     model = Model(inputs=input, outputs=softmax)
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', 'categorical_accuracy'])
+    model.compile(loss='categorical_crossentropy',
+                  optimizer='adam',
+                  metrics=['accuracy', 'categorical_accuracy'])
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/cBLSTM-glove-emb-model-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/cBLSTM-positive-LM-glove-emb-{epoch:02d}.hdf5', verbose=1)
 
-    # train LSTM
-    model.fit(train_X, train_y, epochs=10, batch_size=20, verbose=1, callbacks=[checkpointer])
+    # train model
+    model.fit_generator(data_generator(),
+                        steps_per_epoch=num_samples/batch_size,
+                        epochs=10,
+                        verbose=1,
+                        callbacks=[checkpointer],
+                        max_queue_size=5)
 
     model.save(model_name)
 else:
