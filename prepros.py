@@ -16,7 +16,7 @@ end_token = "</s>"
 mask_token = "<MASK>"
 # When you change these, you need to regenerate the data
 vocab_size = 10000 + 4
-max_sent_length = 30
+max_sent_length = 40
 tokenizer = RegexpTokenizer(r"\w+'\w+|\w+|\!|\?")
 
 
