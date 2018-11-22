@@ -12,7 +12,8 @@ from keras.callbacks import ModelCheckpoint
 # Our Preprocessing Library
 import prepros as pp
 
-num_samples = 300
+num_samples = 12500
+batch_size = 20
 hidden_size = 300
 
 # -- Preprocessing
@@ -50,7 +51,7 @@ else:
 
 
 # Once you have generated the data files, you can outcomment the following line.
-pp.generate_data_files(num_samples)
+# pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
 # For some reason the for loop is only giving us the index here. I dunno why.
@@ -80,47 +81,33 @@ def dataset_to_onehot(dataset):
 
 
 def make_y(x_dataset):
-    print("Making the shifted y-data")
     x = len(x_dataset)
     y = len(x_dataset[0])
     z = pp.vocab_size
     y_dataset = np.ndarray((x, y, z), np.uint8)
     for s in range(x):
-        print(s / x * 100)
+        # print(s / x * 100)
         for w in range(y):
             y_dataset[s][(w - 1) % y] = pp.to_one_hot(x_dataset[s][w], z)
     return y_dataset
 
 
-# Storing data to save time
-one_hot_filename = "one-hot-sentenses-1000.pickle"
-generate_data = True
-if generate_data:
-    train_y = make_y(train_X)
-    print("Saving data")
-    #pp.save_data_to_pickle(train_X, "Emb-X-" + one_hot_filename)
-    #pp.save_data_to_pickle(train_y, "Emb-Y-" + one_hot_filename)
-else:
-    train_X = pp.load_data_from_pickle("Emb-X-" + one_hot_filename)
-    train_y = pp.load_data_from_pickle("Emb-Y-" + one_hot_filename)
+def data_generator():
+    generator_counter = 0
+    while generator_counter < num_samples:
+        next_target = generator_counter + batch_size
+        if next_target > num_samples:
+            next_target = num_samples
+        x_set = train_X[generator_counter:next_target]
+        y_set = make_y(x_set)
+        print(" - samples:", generator_counter, "-", next_target)
+        generator_counter = next_target % num_samples
+        yield x_set, y_set
 
-print(train_X.shape, train_X[0])
-print(train_y.shape)
-
-
-# Helper functions
-def perplexity(review):
-    product = 1
-    size = 0
-    for sentence in review:
-        size += len(sentence)
-        for wordProb in sentence:
-            product *= wordProb
-    return product**(-1/size)
 
 
 model_name = "./model/embedding-lstm-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
-# model_name = "./model/emb-model-40.hdf5"
+# model_name = "./model/glove-emb-model-41.hdf5"
 generate_model = True
 if generate_model:
     # define LSTM
@@ -139,7 +126,7 @@ if generate_model:
     checkpointer = ModelCheckpoint(filepath='./model/glove-emb-model-{epoch:02d}.hdf5', verbose=1)
 
     # train LSTM
-    model.fit(train_X, train_y, epochs=10, batch_size=1, verbose=1, callbacks=[checkpointer])
+    model.fit_generator(data_generator(), steps_per_epoch=(num_samples/batch_size), epochs=100, verbose=1, callbacks=[checkpointer], max_queue_size=3, use_multiprocessing=True)
 
     model.save(model_name)
 else:
@@ -151,5 +138,5 @@ predictions = model.predict(train_X[0:20])
 for k in range(len(predictions)):
     print("------------------")
     print("Input:", pp.ids_to_sentence(train_X[k], i2w))
-    print("Correct:", pp.one_hots_to_sentence(train_y[k], i2w))
+    # print("Correct:", pp.one_hots_to_sentence(train_y[k], i2w))
     print("Prediction", pp.one_hots_to_sentence(predictions[k], i2w))
