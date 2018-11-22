@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.utils import shuffle
 from keras.models import Sequential
 from keras.models import load_model
+from keras.optimizers import SGD
 from keras.layers import LSTM
 from keras.layers import Embedding
 from keras.layers import Dense
@@ -14,7 +15,7 @@ import prepros as pp
 # Our util functions
 import utils
 
-num_samples = 100
+num_samples = 500
 hidden_size = 300
 
 # -- Preprocessing
@@ -34,10 +35,13 @@ else:
 pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-train_X, train_y = utils.make_binary_classifier_dataset(train_pos, train_neg, w2i)
-train_X, train_y = shuffle(train_X, train_y, random_state=420)
+train_X, train_y = utils.make_binary_classifier_sentence_dataset(train_pos, train_neg, w2i)
+train_X, train_y = shuffle(train_X, train_y, random_state=42)
 print("Shape of X-data: ", train_X.shape)
 print("Shape of y-data: ", train_y.shape)
+
+test_X, test_y = utils.make_binary_classifier_sentence_dataset(test_pos, test_neg, w2i)
+test_X, test_y = shuffle(test_X, test_y, random_state=42)
 
 
 model_name = "./model/embedding-blstm-bc-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
@@ -48,18 +52,21 @@ if generate_model:
     print("Creating model")
     model = Sequential()
     model.add(Embedding(pp.vocab_size, hidden_size, input_length=pp.max_sent_length, mask_zero=True,
-                        weights=[embedding_matrix], trainable=False))
-    model.add(Bidirectional(LSTM(hidden_size)))
-    model.add(Dropout(0.5))
+                        weights=[embedding_matrix],trainable=False))
+    model.add(Bidirectional(LSTM(hidden_size, dropout=0.2, recurrent_dropout=0.2)))
     model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # Use a SGD optimizer so that learning rate and momentum can be defined
+    sgd = SGD(lr=0.01, momentum=0.9)
+
+    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/Test-glove-emb-BC-model-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/Nov22-glove-emb-BC-model-{epoch:02d}.hdf5', verbose=1)
 
     # train LSTM
-    model.fit(train_X, train_y, epochs=2, batch_size=100, verbose=1, callbacks=[checkpointer])
+    model.fit(train_X, train_y, epochs=2, batch_size=10, verbose=1, callbacks=[checkpointer])
 
     model.save(model_name)
 else:
@@ -72,4 +79,12 @@ for k in range(len(predictions)):
     print("------------------")
     print("Input:", pp.ids_to_sentence(train_X[k], i2w))
     print("Correct:", train_y[k])
+    print("Prediction:", predictions[k])
+
+predictions = model.predict(test_X[0:20])
+
+for k in range(len(predictions)):
+    print("------------------")
+    print("Input:", pp.ids_to_sentence(test_X[k], i2w))
+    print("Correct:", test_y[k])
     print("Prediction:", predictions[k])
