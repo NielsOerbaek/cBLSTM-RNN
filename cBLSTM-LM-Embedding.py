@@ -12,7 +12,6 @@ from keras.layers import TimeDistributed
 from keras.layers import Activation
 from keras.layers import Lambda
 from keras.callbacks import ModelCheckpoint
-import tensorflow as tf
 
 # Our Preprocessing Library
 import prepros as pp
@@ -59,15 +58,14 @@ else:
 pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
-# For some reason the for loop is only giving us the index here. I dunno why.
 # Convert to sentence level training set:
 train_X = []
 for i in train_pos:
     for j in train_pos[i]:
         train_X.append(np.array(pp.words_to_ids(train_pos[i][j], w2i)))
 
-train_X = np.array(train_X)
-
+# Shuffle for good orders sake
+train_X = shuffle(np.array(train_X), random_state=420)
 num_samples = len(train_X)
 
 
@@ -101,11 +99,14 @@ print("Shape of train_X", train_X.shape)
 
 # Custom function to merge the forwards and backwards layer of the cBLSTM
 def cBLSTM_merge(tensor_list):
+    # In order to make the save/load model work, we have to import tf here.
+    import tensorflow as tf
+
     forwards = tensor_list[0]
     backwards = tensor_list[1]
 
     # This is weird, but i think what i am doing is getting the dynamic dimensions of the input tensor
-    # as tensors themselves, and then expanding the zeromask tensor in two extra dimensions, to be able
+    # as tensors themselves, and then expanding the mask tensor in two extra dimensions, to be able
     # to concatenate our zero-mask to the forwards and backwards tensors.
     mask_tensor = tf.constant(0.0, shape=(1,))
     dim0 = tf.shape(forwards)[0]
