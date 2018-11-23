@@ -65,13 +65,13 @@ def make_binary_classifier_review_dataset(pos_data, neg_data, w2i):
 
 # Perplexity functions
 def perplexity(review):
-    product = 1
+    sum = 0
     size = 0
     for sentence in review:
         size += len(sentence)
         for wordProb in sentence:
-            product *= wordProp
-    return product**(-1/size)
+            sum += math.log(wordProp)
+    return math.exp(sum**(-1/size))
 
 
 def sentence_perplexity(sentence):
