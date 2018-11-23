@@ -15,8 +15,9 @@ import prepros as pp
 # Our util functions
 import utils
 
-num_samples = 500
-hidden_size = 300
+num_samples = 1000
+lstm_memory_cells = 300
+glove_size = 300
 
 # -- Preprocessing
 # Vocab files
@@ -35,7 +36,7 @@ else:
 pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-train_X, train_y = utils.make_binary_classifier_sentence_dataset(train_pos, train_neg, w2i)
+train_X, train_y = utils.make_binary_classifier_sentence_dataset(train_pos, test_neg, w2i)
 train_X, train_y = shuffle(train_X, train_y, random_state=42)
 print("Shape of X-data: ", train_X.shape)
 print("Shape of y-data: ", train_y.shape)
@@ -51,22 +52,22 @@ if generate_model:
     # define LSTM
     print("Creating model")
     model = Sequential()
-    model.add(Embedding(pp.vocab_size, hidden_size, input_length=pp.max_sent_length, mask_zero=True,
-                        weights=[embedding_matrix],trainable=False))
-    model.add(Bidirectional(LSTM(hidden_size, dropout=0.2, recurrent_dropout=0.2)))
+    model.add(Embedding(pp.vocab_size, glove_size, input_length=pp.max_sent_length, mask_zero=True,
+                        weights=[embedding_matrix], trainable=False))
+    model.add(Bidirectional(LSTM(lstm_memory_cells, dropout=0.2, recurrent_dropout=0.2)))
     model.add(Dense(1, activation='sigmoid'))
 
     # Use a SGD optimizer so that learning rate and momentum can be defined
-    sgd = SGD(lr=0.01, momentum=0.9)
+    sgd = SGD(lr=0.1, momentum=0.9)
 
-    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     print(model.summary())
 
     # Callback to save model between epochs
     checkpointer = ModelCheckpoint(filepath='./model/Nov22-glove-emb-BC-model-{epoch:02d}.hdf5', verbose=1)
 
     # train LSTM
-    model.fit(train_X, train_y, epochs=2, batch_size=10, verbose=1, callbacks=[checkpointer])
+    model.fit(train_X, train_y, epochs=50, batch_size=50, verbose=1, callbacks=[checkpointer])
 
     model.save(model_name)
 else:

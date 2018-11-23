@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from sklearn.utils import shuffle
-from keras.models import Sequential
+from keras.optimizers import SGD
 from keras.models import load_model
 from keras.models import Model
 from keras.layers import LSTM
@@ -46,6 +46,7 @@ if generate_embeddings:
             break
         else:
             embedding_vector = embeddings_index.get(word)
+            #TODO: Test how many words in our vocab that fall outside here.
             if embedding_vector is not None:
                 embedding_matrix[index] = embedding_vector
 
@@ -122,6 +123,7 @@ def cBLSTM_merge(tensor_list):
 
 
 model_name = "./model/cBLSTM-pos.model"
+model_name = "./model/cBLSTM-positive-LM-glove-emb-03.hdf5"
 generate_model = True
 if generate_model:
     # define LSTM
@@ -138,10 +140,12 @@ if generate_model:
     cBLSTM_forwards = LSTM(pp.max_sent_length - 1,
                            input_shape=(pp.max_sent_length, hidden_size),
                            return_sequences=True,
+                           dropout=0.2, recurrent_dropout=0.2,
                            name="cBLSTM_forwards")(emb)
     cBLSTM_backwards = LSTM(pp.max_sent_length - 1,
                             input_shape=(pp.max_sent_length, hidden_size),
                             return_sequences=True,
+                            dropout=0.2, recurrent_dropout=0.2,
                             name="cBLSTM_backwards",
                             go_backwards=True)(emb)
 
@@ -152,8 +156,11 @@ if generate_model:
     softmax = Activation('softmax', name="Softmax")(time_dist)
 
     model = Model(inputs=input, outputs=softmax)
+    # Use a SGD optimizer so that learning rate and momentum can be defined
+    sgd = SGD(lr=0.01, momentum=0.9)
+
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
+                  optimizer=sgd,
                   metrics=['accuracy', 'categorical_accuracy'])
     print(model.summary())
 

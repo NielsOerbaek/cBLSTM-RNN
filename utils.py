@@ -1,5 +1,6 @@
 import numpy as np
 import prepros as pp
+import math
 
 
 def generate_embedding_matrix(glove_filename, w2i):
@@ -65,13 +66,16 @@ def make_binary_classifier_review_dataset(pos_data, neg_data, w2i):
 
 # Perplexity functions
 def perplexity(review):
-    sum = 0
+    log_sum = 0
     size = 0
     for sentence in review:
         size += len(sentence)
         for wordProb in sentence:
-            sum += math.log(wordProp)
-    return math.exp(sum**(-1/size))
+            log_sum += math.log(wordProb)
+    # TODO: Either fix this problem by doing some fancy math, or write a nice thing in the report that proves that a the relative negative log is just as good at the perplexity if we're only comparing them to each other.
+    # TODO: Also try switching back once we get better trained LMs
+    # return math.exp(sum)**(-1/size)
+    return log_sum / (-size)
 
 
 def sentence_perplexity(sentence):
