@@ -1,5 +1,4 @@
 from nltk import word_tokenize, sent_tokenize
-from nltk.tokenize import RegexpTokenizer
 import numpy as np
 import os
 import pickle
@@ -16,8 +15,7 @@ end_token = "</s>"
 mask_token = "<MASK>"
 # When you change these, you need to regenerate the data
 vocab_size = 10000 + 4
-max_sent_length = 30
-tokenizer = RegexpTokenizer(r"\w+'\w+|\w+|\!|\?")
+max_sent_length = 80
 
 
 def make_vocab(path_to_vocab_file):
@@ -26,9 +24,10 @@ def make_vocab(path_to_vocab_file):
     word_to_id[mask_token]
     with open("." + path_to_vocab_file, "r") as v:
         for i, word in enumerate(v):
-            if i >= vocab_size-4:
+            if len(word_to_id) >= vocab_size-4:
                 break
-            word_to_id[word.strip()]
+            for w in word_tokenize(word.strip()):
+                word_to_id[w]
     # Adding special meta-words
     word_to_id[start_token]
     word_to_id[end_token]
@@ -46,8 +45,12 @@ def tokenize_and_pad(sentence):
     words = []
     if len(sentence) > 0:
         words = [start_token]
-        for word in tokenizer.tokenize(sentence):
-            words.append(word)
+        sentence = sentence.replace(".", "")
+        for word in word_tokenize(sentence):
+            if word == "'s":
+                words.append("is")
+            else:
+                words.append(word)
         words.append(end_token)
         words = make_sentence_fixed_length(words)
     return words
@@ -59,7 +62,7 @@ def get_data_dict(path_to_data, limit=0):
     nsf1 = re.compile("(\w)\.(\w)")
     nsf2 = re.compile("(\w)\.\.?\.(.)")
     for i, filename in enumerate(os.listdir(os.getcwd() + path_to_data)):
-        if i == limit - 1:
+        if i == limit and limit > 0:
             break
         if limit == 0:
             limit = 12500
@@ -86,9 +89,10 @@ def make_sentence_fixed_length(tokenized_sentence, length=max_sent_length):
 
 
 def words_to_ids(tokenized_sentence, w2i_vocab):
+    word_ids = []
     for i, word in enumerate(tokenized_sentence):
-        tokenized_sentence[i] = w2i_vocab[word]
-    return tokenized_sentence
+        word_ids.append(w2i_vocab[word])
+    return word_ids
 
 
 def ids_to_words(tokenized_sentence, i2w_vocab):

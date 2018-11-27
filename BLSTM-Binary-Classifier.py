@@ -54,7 +54,7 @@ if generate_model:
     print("Creating model")
     model = Sequential()
     model.add(Embedding(pp.vocab_size, glove_size, input_length=pp.max_sent_length, mask_zero=True,
-                        weights=[embedding_matrix], trainable=False))
+                        weights=[embedding_matrix], trainable=True))
     model.add(Bidirectional(LSTM(lstm_memory_cells, dropout=0.2, recurrent_dropout=0.2)))
     model.add(Dense(1, activation='sigmoid'))
 
