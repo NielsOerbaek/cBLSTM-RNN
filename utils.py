@@ -26,6 +26,8 @@ def generate_embedding_matrix(glove_filename, w2i):
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
                 embedding_matrix[index] = embedding_vector
+            else:
+                print("Not found in glove:", word, index)
 
     return embedding_matrix
 
