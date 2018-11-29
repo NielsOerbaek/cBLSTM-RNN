@@ -1,6 +1,8 @@
 import numpy as np
 import prepros as pp
 import math
+from sklearn.utils import shuffle
+from sklearn.model_selection import train_test_split
 
 
 def generate_embedding_matrix(glove_filename, w2i):
@@ -64,6 +66,22 @@ def make_binary_classifier_review_dataset(pos_data, neg_data, w2i):
     append_reviews(X, y, pos_data, 1, w2i)
     append_reviews(X, y, neg_data, 0, w2i, offset=len(pos_data))
     return X, y
+
+
+def make_language_model_sentence_dataset(data1, data2, w2i):
+    x = []
+    for i in data1:
+        for j in data1[i]:
+            x.append(np.array(pp.words_to_ids(data1[i][j], w2i)))
+    for i in data2:
+        for j in data2[i]:
+            x.append(np.array(pp.words_to_ids(data2[i][j], w2i)))
+
+    # Shuffle for good orders sake
+    x = shuffle(np.array(x), random_state=420)
+    train_x, test_x = train_test_split(x, test_size=0.1, shuffle=False)
+    return train_x, test_x
+
 
 
 # Perplexity functions

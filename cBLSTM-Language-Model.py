@@ -15,9 +15,11 @@ from keras.callbacks import ModelCheckpoint
 
 # Our Preprocessing Library
 import prepros as pp
+import utils
 
 num_reviews = 0
-batch_size = 50
+batch_size = 10
+glove_size = 300
 hidden_size = 300
 
 # -- Preprocessing
@@ -38,14 +40,7 @@ else:
 # pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
-# Convert to sentence level training set:
-train_X = []
-for i in train_pos:
-    for j in train_pos[i]:
-        train_X.append(np.array(pp.words_to_ids(train_pos[i][j], w2i)))
-
-# Shuffle for good orders sake
-train_X = shuffle(np.array(train_X), random_state=420)
+train_X, test_X = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
 num_samples = len(train_X)
 
 
@@ -74,7 +69,15 @@ def data_generator():
         yield x_set, y_set
 
 
-print("Shape of train_X", train_X.shape)
+def data_generator_fake():
+    while True:
+        x_set = train_X[0:batch_size]
+        y_set = make_y(x_set)
+        yield x_set, y_set
+
+
+print("Shape of train_X:", train_X.shape)
+print("Shape of test_X:", test_X.shape)
 
 
 # Custom function to merge the forwards and backwards layer of the cBLSTM
@@ -82,49 +85,48 @@ def cBLSTM_merge(tensor_list):
     # In order to make the save/load model work, we have to import tf here.
     import tensorflow as tf
 
-    forwards = tensor_list[0]
-    backwards = tensor_list[1]
+    # We cut off the last timestep of each tensor.
+    forwards = tensor_list[0][:, :-1, :]
+    backwards = tensor_list[1][:, 1:, :]
 
     # This is weird, but i think what i am doing is getting the dynamic dimensions of the input tensor
     # as tensors themselves, and then expanding the mask tensor in two extra dimensions, to be able
     # to concatenate our zero-mask to the forwards and backwards tensors.
     mask_tensor = tf.constant(0.0, shape=(1,))
     dim0 = tf.shape(forwards)[0]
-    dim1 = tf.shape(forwards)[1]
+    dim2 = tf.shape(forwards)[2]
     mask_tensor = tf.expand_dims(mask_tensor, axis=0)
-    mask_tensor = tf.expand_dims(mask_tensor, axis=0)
-    mask_tensor = tf.tile(mask_tensor, [dim0, dim1, 1])
+    mask_tensor = tf.expand_dims(mask_tensor, axis=2)
+    mask_tensor = tf.tile(mask_tensor, [dim0, 1, dim2])
 
-    forwards = tf.concat([mask_tensor, forwards], axis=2, name="concat_forwards")
-    backwards = tf.concat([backwards, mask_tensor], axis=2, name="concat_backwards")
+    forwards = tf.concat([mask_tensor, forwards], axis=1, name="concat_forwards")
+    backwards = tf.concat([backwards, mask_tensor], axis=1, name="concat_backwards")
     merged_tensor = tf.math.add(forwards, backwards)
     return merged_tensor
 
 
 model_name = "./model/cBLSTM-pos.model"
-# model_name = "./model/cBLSTM-positive-LM-glove-emb-01.hdf5"
+# model_name = "./model/TEST_ONLY_ONE_BATCH_cBLSTM-pos-LM-32.hdf5"
 generate_model = True
 if generate_model:
     # define LSTM
     print("Creating model")
     input = Input(shape=(pp.max_sent_length,), name="Input_list_of_word_ids")
 
-    emb = Embedding(pp.vocab_size, hidden_size,
+    emb = Embedding(pp.vocab_size, glove_size,
                     input_length=pp.max_sent_length,
                     mask_zero=True,
                     weights=[embedding_matrix],
                     trainable=True,
                     name="Pretrained_word_vectors")(input)
 
-    cBLSTM_forwards = LSTM(pp.max_sent_length - 1,
+    cBLSTM_forwards = LSTM(hidden_size,
                            input_shape=(pp.max_sent_length, hidden_size),
                            return_sequences=True,
-                           dropout=0.2, recurrent_dropout=0.2,
                            name="cBLSTM_forwards")(emb)
-    cBLSTM_backwards = LSTM(pp.max_sent_length - 1,
+    cBLSTM_backwards = LSTM(hidden_size,
                             input_shape=(pp.max_sent_length, hidden_size),
                             return_sequences=True,
-                            dropout=0.2, recurrent_dropout=0.2,
                             name="cBLSTM_backwards",
                             go_backwards=True)(emb)
 
@@ -135,21 +137,23 @@ if generate_model:
     softmax = Activation('softmax', name="Softmax")(time_dist)
 
     model = Model(inputs=input, outputs=softmax)
+
     # Use a SGD optimizer so that learning rate and momentum can be defined
-    sgd = SGD(lr=0.01, momentum=0.9)
+    # sgd = SGD(lr=0.01, momentum=0.9)
+    # Actually use the adam instead, because fixed learning rate is soooo slow.
 
     model.compile(loss='categorical_crossentropy',
-                  optimizer=sgd,
-                  metrics=['accuracy', 'categorical_accuracy'])
+                  optimizer='adam',
+                  metrics=['categorical_accuracy'])
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/cBLSTM-positive-LM-glove-emb-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/Nov-29-cBLSTM-pos-LM-{epoch:02d}.hdf5', verbose=1)
 
     # train model
     model.fit_generator(data_generator(),
                         steps_per_epoch=num_samples/batch_size,
-                        epochs=10,
+                        epochs=50,
                         verbose=1,
                         callbacks=[checkpointer],
                         max_queue_size=5)
@@ -159,9 +163,21 @@ else:
     model = load_model(model_name)
 
 
+def extract_probabilities_from_sentence(sentence, prediction):
+    probabilities = []
+    for i, word_id in enumerate(sentence):
+        if word_id == 0:
+            break
+        probabilities.append(prediction[i][int(word_id)])
+    return probabilities
+
+
 predictions = model.predict(train_X[0:20])
 
 for k in range(len(predictions)):
-    print("------------------")
+    print("--------- "+str(k)+" ---------")
     print("Input:", pp.ids_to_sentence(train_X[k], i2w))
     print("Prediction", pp.one_hots_to_sentence(predictions[k], i2w))
+    print("Sentence perplexity", utils.sentence_perplexity(
+        extract_probabilities_from_sentence(train_X[k], predictions[k])
+    ))
