@@ -12,7 +12,7 @@ model_folder_path = "./model/"
 positive_LM_filename = model_folder_path + "positive-LM-emb-model-40.hdf5"
 negative_LM_filename = model_folder_path + "negative-LM-emb-model-40.hdf5"
 binary_classifier_filename = model_folder_path + "Nov22-glove-emb-BC-model-01.hdf5"
-num_samples = 5000
+num_samples = 500
 
 
 # Vocab files
