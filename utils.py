@@ -5,22 +5,22 @@ from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 
 
-def generate_embedding_matrix(glove_filename, w2i):
+def generate_embedding_matrix(glove_filename, glove_size, w2i):
     embeddings_index = dict()
     f = open(glove_filename)
     i = 0
     print("Generating Pretrained Embedding Matrix")
     for line in f:
         values = line.split()
-        word = "".join(values[0:-300])
-        coefs = np.asarray(values[-300:], dtype='float32')
+        word = "".join(values[0:-glove_size])
+        coefs = np.asarray(values[-glove_size:], dtype='float32')
         embeddings_index[word] = coefs
         i += 1
         if i % 500 == 0:
             print(i)
     f.close()
 
-    embedding_matrix = np.zeros((pp.vocab_size, 300))
+    embedding_matrix = np.zeros((pp.vocab_size, glove_size))
     for word, index in zip(w2i.keys(), w2i.values()):
         if index > pp.vocab_size - 1:
             break
@@ -53,8 +53,8 @@ def append_reviews(x_array, y_array, data, label, w2i, offset=0):
 def make_binary_classifier_sentence_dataset(pos_data, neg_data, w2i):
     X = []
     y = []
-    append_sentences(X, y, pos_data, 1, w2i)
-    append_sentences(X, y, neg_data, 0, w2i)
+    append_sentences(X, y, pos_data, np.full((pp.max_sent_length, 1), 1), w2i)
+    append_sentences(X, y, neg_data, np.full((pp.max_sent_length, 1), 0), w2i)
     X = np.array(X)
     y = np.array(y)
     return X, y
@@ -81,7 +81,6 @@ def make_language_model_sentence_dataset(data1, data2, w2i):
     x = shuffle(np.array(x), random_state=420)
     train_x, test_x = train_test_split(x, test_size=0.1, shuffle=False)
     return train_x, test_x
-
 
 
 # Perplexity functions

@@ -17,9 +17,9 @@ from keras.callbacks import ModelCheckpoint
 import prepros as pp
 import utils
 
-num_reviews = 0
+num_reviews = 10
 batch_size = 10
-glove_size = 300
+glove_size = 100
 hidden_size = 300
 
 # -- Preprocessing
@@ -30,14 +30,14 @@ w2i, i2w = pp.make_vocab(pp.vocab_file)
 
 generate_embeddings = False
 if generate_embeddings:
-    embedding_matrix = utils.generate_embedding_matrix('glove.6B/glove.6B.300d.txt', w2i)
-    pp.save_data_to_pickle(embedding_matrix, "glove-6B-300.pickle")
+    embedding_matrix = utils.generate_embedding_matrix('glove.6B/glove.6B.'+str(glove_size)+'d.txt', glove_size, w2i)
+    pp.save_data_to_pickle(embedding_matrix, "glove-6B-"+str(glove_size)+".pickle")
 else:
-    embedding_matrix = pp.load_data_from_pickle("glove-6B-300.pickle")
+    embedding_matrix = pp.load_data_from_pickle("glove-6B-"+str(glove_size)+".pickle")
 
 
 # Once you have generated the data files, you can outcomment the following line.
-# pp.generate_data_files(num_reviews)
+pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
 train_X, test_X = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
@@ -121,11 +121,11 @@ if generate_model:
                     name="Pretrained_word_vectors")(input)
 
     cBLSTM_forwards = LSTM(hidden_size,
-                           input_shape=(pp.max_sent_length, hidden_size),
+                           input_shape=(pp.max_sent_length, glove_size),
                            return_sequences=True,
                            name="cBLSTM_forwards")(emb)
     cBLSTM_backwards = LSTM(hidden_size,
-                            input_shape=(pp.max_sent_length, hidden_size),
+                            input_shape=(pp.max_sent_length, glove_size),
                             return_sequences=True,
                             name="cBLSTM_backwards",
                             go_backwards=True)(emb)
@@ -151,9 +151,9 @@ if generate_model:
     checkpointer = ModelCheckpoint(filepath='./model/Nov-29-cBLSTM-pos-LM-{epoch:02d}.hdf5', verbose=1)
 
     # train model
-    model.fit_generator(data_generator(),
-                        steps_per_epoch=num_samples/batch_size,
-                        epochs=50,
+    model.fit_generator(data_generator_fake(),
+                        steps_per_epoch=1,
+                        epochs=300,
                         verbose=1,
                         callbacks=[checkpointer],
                         max_queue_size=5)

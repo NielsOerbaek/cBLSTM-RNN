@@ -59,8 +59,14 @@ def classify_review_by_lm(review, pos_prediction, neg_prediction):
         return 0
 
 
-def classify_review_by_bc(sent_pred):
-    avg_pred = sum(sent_pred) / len(sent_pred)
+def classify_review_by_bc(predictions, review):
+    probs = []
+    for i, sent in enumerate(review):
+        for j, word_id in enumerate(sent):
+            if word_id == 0:
+                break
+            probs.append(predictions[i][j])
+    avg_pred = sum(probs) / len(probs)
     return int(round(avg_pred[0]))
 
 
