@@ -17,8 +17,8 @@ from keras.callbacks import ModelCheckpoint
 import prepros as pp
 import utils
 
-num_reviews = 10
-batch_size = 10
+num_reviews = 0
+batch_size = 100
 glove_size = 100
 hidden_size = 300
 
@@ -37,7 +37,7 @@ else:
 
 
 # Once you have generated the data files, you can outcomment the following line.
-pp.generate_data_files(num_reviews)
+# pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
 train_X, test_X = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
@@ -105,7 +105,7 @@ def cBLSTM_merge(tensor_list):
     return merged_tensor
 
 
-model_name = "./model/cBLSTM-pos.model"
+model_name = "./model/Dec-4-cBLSTM-pos.model"
 # model_name = "./model/TEST_ONLY_ONE_BATCH_cBLSTM-pos-LM-32.hdf5"
 generate_model = True
 if generate_model:
@@ -148,12 +148,12 @@ if generate_model:
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/Nov-29-cBLSTM-pos-LM-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/Dec-4-cBLSTM-pos-LM-{epoch:02d}.hdf5', verbose=1)
 
     # train model
-    model.fit_generator(data_generator_fake(),
-                        steps_per_epoch=1,
-                        epochs=300,
+    model.fit_generator(data_generator(),
+                        steps_per_epoch=(num_samples/batch_size),
+                        epochs=50,
                         verbose=1,
                         callbacks=[checkpointer],
                         max_queue_size=5)
