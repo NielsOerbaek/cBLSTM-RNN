@@ -83,6 +83,21 @@ def make_language_model_sentence_dataset(data1, data2, w2i):
     return train_x, test_x
 
 
+# Made this aux function to make sure we make the same train/test split for the LMs and the BC
+# USE: Generate the LM-dataset using the function above, then transform the train and test parts separately using this.
+def from_lm_to_bc_dataset(positive_sentences, negative_sentences):
+    X = []
+    y = []
+    for s in positive_sentences:
+        X.append(s)
+        y.append(np.full((pp.max_sent_length, 1), 1))
+    for s in negative_sentences:
+        X.append(s)
+        y.append(np.full((pp.max_sent_length, 1), 0))
+    X, y = shuffle([np.array(X), np.array(y)], random_state=420)
+    return X, y
+
+
 # Perplexity functions
 def perplexity(review):
     log_sum = 0

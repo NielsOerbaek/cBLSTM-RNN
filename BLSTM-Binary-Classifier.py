@@ -1,4 +1,3 @@
-from sklearn.utils import shuffle
 from keras.models import Sequential
 from keras.models import load_model
 from keras.layers import LSTM
@@ -35,13 +34,17 @@ else:
 # pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-train_X, train_y = utils.make_binary_classifier_sentence_dataset(train_pos, train_neg, w2i)
-train_X, train_y = shuffle(train_X, train_y, random_state=420)
-print("Shape of X-data: ", train_X.shape)
-print("Shape of y-data: ", train_y.shape)
-
-test_X, test_y = utils.make_binary_classifier_sentence_dataset(test_pos, test_neg, w2i)
-test_X, test_y = shuffle(test_X, test_y, random_state=420)
+train_pos, test_pos = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
+train_neg, test_neg = utils.make_language_model_sentence_dataset(train_neg, test_neg, w2i)
+train_X, train_y = utils.from_lm_to_bc_dataset(train_pos, train_neg)
+test_X, test_y = utils.from_lm_to_bc_dataset(test_pos, test_neg)
+print("--------------------------------------")
+print("Shape of train X-data: ", train_X.shape)
+print("Shape of train y-data: ", train_y.shape)
+print("--------------------------------------")
+print("Shape of test X-data: ", test_X.shape)
+print("Shape of test y-data: ", test_y.shape)
+print("--------------------------------------")
 
 
 model_name = "./model/embedding-blstm-bc-pos-lm-" + str(pp.vocab_size) + "vocab-" + str(num_samples) + "reviews-max-length-" + str(pp.max_sent_length) + ".model"
