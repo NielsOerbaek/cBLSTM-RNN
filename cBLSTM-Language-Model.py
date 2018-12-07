@@ -40,7 +40,13 @@ else:
 # pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
-train_X, test_X = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
+# Make the 90/10 data split instead of default 50/50
+train_pos, test_pos = utils.split_data(train_pos, test_pos)
+
+# Convert to sentence level dataset
+train_X = utils.make_language_model_sentence_dataset(train_pos, w2i)
+test_X = utils.make_language_model_sentence_dataset(test_pos, w2i)
+
 num_samples = len(train_X)
 
 

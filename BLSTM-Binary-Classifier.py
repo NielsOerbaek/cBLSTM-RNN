@@ -31,13 +31,24 @@ else:
     embedding_matrix = pp.load_data_from_pickle("glove-6B-"+str(glove_size)+".pickle")
 
 # Once you have generated the data files, you can outcomment the following line.
-# pp.generate_data_files(num_samples)
+pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 
-train_pos, test_pos = utils.make_language_model_sentence_dataset(train_pos, test_pos, w2i)
-train_neg, test_neg = utils.make_language_model_sentence_dataset(train_neg, test_neg, w2i)
+# Split the data by 90/10 instead of 50/50
+train_pos, test_pos = utils.split_data(train_pos, test_pos)
+train_neg, test_neg = utils.split_data(train_neg, test_neg)
+
+# Make the sentence-level datasets
+train_pos = utils.make_language_model_sentence_dataset(train_pos, w2i)
+train_neg = utils.make_language_model_sentence_dataset(train_neg, w2i)
+test_pos = utils.make_language_model_sentence_dataset(test_pos, w2i)
+test_neg = utils.make_language_model_sentence_dataset(test_neg, w2i)
+
+# Attach labels to datasets
 train_X, train_y = utils.from_lm_to_bc_dataset(train_pos, train_neg)
 test_X, test_y = utils.from_lm_to_bc_dataset(test_pos, test_neg)
+
+
 print("--------------------------------------")
 print("Shape of train X-data: ", train_X.shape)
 print("Shape of train y-data: ", train_y.shape)
@@ -63,7 +74,7 @@ if generate_model:
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/Nov30-Binary-Classifier-80sent-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/Dec7-BLSTM-BC-{epoch:02d}.hdf5', verbose=1)
 
     # train LSTM
     model.fit(train_X, train_y, epochs=20, batch_size=100, verbose=1,

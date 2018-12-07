@@ -57,7 +57,7 @@ def tokenize_and_pad(sentence):
 
 
 def get_data_dict(path_to_data, limit=0):
-    data = dict()
+    data = []
     # RegEx'es to help the sentence segmentation along.
     nsf1 = re.compile("(\w)\.(\w)")
     nsf2 = re.compile("(\w)\.\.?\.(.)")
@@ -69,7 +69,7 @@ def get_data_dict(path_to_data, limit=0):
         if i % 500 == 0:
             print(str(i / limit * 100) + "%")
         with open("." + path_to_data + filename, "r") as f:
-            review = dict()
+            review = []
             for line in f:
                 # To lowercase and fixing examples with no space after periods.
                 line = str.lower(line.replace("<br /><br />", ".").replace(",", "").replace("-", ""))
@@ -77,8 +77,8 @@ def get_data_dict(path_to_data, limit=0):
                 for j, sentence in enumerate(sent_tokenize(line)):
                     words = tokenize_and_pad(sentence)
                     if len(words) > 2:
-                        review[j] = words
-            data[i] = review
+                        review.append(words)
+            data.append(review)
     return data
 
 

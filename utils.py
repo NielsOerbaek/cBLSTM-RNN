@@ -34,20 +34,25 @@ def generate_embedding_matrix(glove_filename, glove_size, w2i):
     return embedding_matrix
 
 
+# Use this function to re-split the positive or negative data from 50/50 to 90/10
+def split_data(data1, data2):
+    return train_test_split((data1 + data2), test_size=0.1, shuffle=False)
+
+
 def append_sentences(x_array, y_array, data, label, w2i):
     for i in data:
-        for j in data[i]:
+        for j in i:
             x_array.append(np.array(pp.words_to_ids(data[i][j], w2i)))
             y_array.append(label)
 
 
 def append_reviews(x_array, y_array, data, label, w2i, offset=0):
-    for i in data:
+    for i, review in enumerate(data):
         dataset_i = i + offset
-        x_array.append(np.zeros((len(data[i]), pp.max_sent_length)))
+        x_array.append(np.zeros((len(review), pp.max_sent_length)))
         y_array.append(label)
-        for j in data[i]:
-            x_array[dataset_i][j] = np.array(pp.words_to_ids(data[i][j], w2i))
+        for j, sentence in enumerate(review):
+            x_array[dataset_i][j] = np.array(pp.words_to_ids(sentence, w2i))
 
 
 def make_binary_classifier_sentence_dataset(pos_data, neg_data, w2i):
@@ -68,19 +73,14 @@ def make_binary_classifier_review_dataset(pos_data, neg_data, w2i):
     return X, y
 
 
-def make_language_model_sentence_dataset(data1, data2, w2i):
+def make_language_model_sentence_dataset(data1, w2i):
     x = []
-    for i in data1:
-        for j in data1[i]:
-            x.append(np.array(pp.words_to_ids(data1[i][j], w2i)))
-    for i in data2:
-        for j in data2[i]:
-            x.append(np.array(pp.words_to_ids(data2[i][j], w2i)))
-
+    for i, review in enumerate(data1):
+        for j in review:
+            x.append(np.array(pp.words_to_ids(j, w2i)))
     # Shuffle for good orders sake
     x = shuffle(np.array(x), random_state=420)
-    train_x, test_x = train_test_split(x, test_size=0.1, shuffle=False)
-    return train_x, test_x
+    return x
 
 
 # Made this aux function to make sure we make the same train/test split for the LMs and the BC

@@ -6,10 +6,10 @@ import prepros as pp
 import utils
 
 model_folder_path = "./model/"
-positive_LM_filename = model_folder_path + "positive-LM-emb-model-40.hdf5"
-negative_LM_filename = model_folder_path + "negative-LM-emb-model-40.hdf5"
-binary_classifier_filename = model_folder_path + "Nov22-glove-emb-BC-model-01.hdf5"
-num_samples = 1000
+positive_LM_filename = model_folder_path + ""
+negative_LM_filename = model_folder_path + ""
+binary_classifier_filename = model_folder_path + ""
+num_samples = 0
 
 
 # Vocab files
@@ -19,6 +19,10 @@ w2i, i2w = pp.make_vocab(pp.vocab_file)
 # Once you have generated the data files, you can outcomment the following line.
 # pp.generate_data_files(num_samples)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
+
+# Split the data by 90/10 instead of 50/50
+train_pos, test_pos = utils.split_data(train_pos, test_pos)
+train_neg, test_neg = utils.split_data(train_neg, test_neg)
 
 test_X, test_y = utils.make_binary_classifier_review_dataset(test_pos, test_neg, w2i)
 test_X, test_y = shuffle(test_X, test_y, random_state=420)
