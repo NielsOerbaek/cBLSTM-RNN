@@ -1,14 +1,14 @@
-import numpy as np
 from keras.models import load_model
 from sklearn.utils import shuffle
+from scipy.interpolate import interp1d
 
 import prepros as pp
 import utils
 
 model_folder_path = "./model/"
-positive_LM_filename = model_folder_path + ""
-negative_LM_filename = model_folder_path + ""
-binary_classifier_filename = model_folder_path + ""
+positive_LM_filename = model_folder_path + "Dec-7-cBLSTM-pos-LM-20.hdf5"
+negative_LM_filename = model_folder_path + "Dec-8-cBLSTM-neg-LM-20.hdf5"
+binary_classifier_filename = model_folder_path + "Dec9-BLSTM-BC-20.hdf5"
 num_samples = 0
 
 
@@ -23,6 +23,9 @@ train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_samples)
 # Split the data by 90/10 instead of 50/50
 train_pos, test_pos = utils.split_data(train_pos, test_pos)
 train_neg, test_neg = utils.split_data(train_neg, test_neg)
+
+train_X, train_y = utils.make_binary_classifier_review_dataset(train_pos, train_neg, w2i)
+train_X, train_y = shuffle(train_X, train_y, random_state=420)
 
 test_X, test_y = utils.make_binary_classifier_review_dataset(test_pos, test_neg, w2i)
 test_X, test_y = shuffle(test_X, test_y, random_state=420)
@@ -57,13 +60,29 @@ def classify_review_by_lm(review, pos_prediction, neg_prediction):
     pos_perplexity = utils.perplexity(pos_probs)
     neg_perplexity = utils.perplexity(neg_probs)
 
-    if pos_perplexity < neg_perplexity:
-        return 1
+    delta = pos_perplexity - neg_perplexity
+
+    if delta < 0:
+        if delta < p_bottom:
+            return 1.0
+        return p_map_bottom(delta)
     else:
-        return 0
+        if delta > p_top:
+            return 0.0
+        return p_map_top(delta)
 
 
-def classify_review_by_bc(predictions, review):
+def get_perplexities(review, pos_prediction, neg_prediction):
+    pos_probs = extract_probabilities_from_review(review, pos_prediction)
+    neg_probs = extract_probabilities_from_review(review, neg_prediction)
+
+    pos_perplexity = utils.perplexity(pos_probs)
+    neg_perplexity = utils.perplexity(neg_probs)
+
+    return pos_perplexity, neg_perplexity
+
+
+def classify_review_by_bc(review, predictions):
     probs = []
     for i, sent in enumerate(review):
         for j, word_id in enumerate(sent):
@@ -71,8 +90,25 @@ def classify_review_by_bc(predictions, review):
                 break
             probs.append(predictions[i][j])
     avg_pred = sum(probs) / len(probs)
-    return int(round(avg_pred[0]))
+    return avg_pred[0]
 
+
+print("Calibrating perplexity weights...")
+p_bottom = 1000000000
+p_top = -10000000000
+for i in range(len(train_X[:10])):
+    pos_predictions = positive_LM.predict(train_X[i], verbose=2)
+    neg_predictions = negative_LM.predict(train_X[i], verbose=2)
+
+    pos_p, neg_p = get_perplexities(train_X[i], pos_predictions, neg_predictions)
+    delta = pos_p - neg_p
+
+    p_bottom = min(p_bottom, delta)
+    p_top = max(p_top, delta)
+
+# Init interpolation mappers
+p_map_bottom = interp1d([p_bottom, 0], [1, 0.5])
+p_map_top = interp1d([0, p_top], [0.5, 0])
 
 LM_hits = 0
 BC_hits = 0
@@ -85,15 +121,15 @@ for i in range(samples):
     bc_predictions = binary_classifier.predict(test_X[i], verbose=2)
 
     LM_classification = classify_review_by_lm(test_X[i], pos_predictions, neg_predictions)
-    BC_classification = classify_review_by_bc(bc_predictions)
+    BC_classification = classify_review_by_bc(test_X[i], bc_predictions)
     classification = int(round((LM_classification + BC_classification) / 2))
 
     truth = test_y[i]
     if truth == classification:
         Comb_hits += 1
-    if truth == LM_classification:
+    if truth == round(LM_classification):
         LM_hits += 1
-    if truth == BC_classification:
+    if truth == round(BC_classification):
         BC_hits += 1
 
     def p_a(hits):
@@ -102,8 +138,8 @@ for i in range(samples):
     print("Sample " + str(i) + "/" + str(samples),
           "\tTruth:", truth,
           "\tLM+BC:", classification,
-          "\tLM:", LM_classification,
-          "\tBC:", BC_classification,
+          "\tLM:", round(LM_classification,2),
+          "\tBC:", round(BC_classification,2),
           "\tLM+BC-acc:", p_a(Comb_hits),
           "\tLM-acc:", p_a(LM_hits),
           "\tBC-acc:", p_a(BC_hits))

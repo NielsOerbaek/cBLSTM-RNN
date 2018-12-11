@@ -106,8 +106,6 @@ def perplexity(review):
         size += len(sentence)
         for wordProb in sentence:
             log_sum += math.log(wordProb)
-    # TODO: Either fix this problem by doing some fancy math, or write a nice thing in the report that proves that a the relative negative log is just as good at the perplexity if we're only comparing them to each other.
-    # TODO: Also try switching back once we get better trained LMs
     # return math.exp(sum)**(-1/size)
     return log_sum / (-size)
 
