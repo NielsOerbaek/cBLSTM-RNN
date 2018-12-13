@@ -8,16 +8,12 @@ from sklearn.model_selection import train_test_split
 def generate_embedding_matrix(glove_filename, glove_size, w2i):
     embeddings_index = dict()
     f = open(glove_filename)
-    i = 0
     print("Generating Pretrained Embedding Matrix")
     for line in f:
         values = line.split()
         word = "".join(values[0:-glove_size])
         coefs = np.asarray(values[-glove_size:], dtype='float32')
         embeddings_index[word] = coefs
-        i += 1
-        if i % 500 == 0:
-            print(i)
     f.close()
 
     embedding_matrix = np.zeros((pp.vocab_size, glove_size))
@@ -83,8 +79,6 @@ def make_language_model_sentence_dataset(data1, w2i):
     return x
 
 
-# Made this aux function to make sure we make the same train/test split for the LMs and the BC
-# USE: Generate the LM-dataset using the function above, then transform the train and test parts separately using this.
 def from_lm_to_bc_dataset(positive_sentences, negative_sentences):
     X = []
     y = []

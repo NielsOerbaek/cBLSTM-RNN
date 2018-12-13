@@ -21,6 +21,8 @@ num_reviews = 0
 batch_size = 100
 glove_size = 100
 hidden_size = 300
+train_positive = True
+model_name = "My-cBLSTM-LM"
 
 # -- Preprocessing
 # Vocab files
@@ -28,7 +30,7 @@ print("Making vocab dicts of size " + str(pp.vocab_size))
 w2i, i2w = pp.make_vocab(pp.vocab_file)
 
 
-generate_embeddings = False
+generate_embeddings = True
 if generate_embeddings:
     embedding_matrix = utils.generate_embedding_matrix('glove.6B/glove.6B.'+str(glove_size)+'d.txt', glove_size, w2i)
     pp.save_data_to_pickle(embedding_matrix, "glove-6B-"+str(glove_size)+".pickle")
@@ -37,15 +39,18 @@ else:
 
 
 # Once you have generated the data files, you can outcomment the following line.
-# pp.generate_data_files(num_reviews)
+pp.generate_data_files(num_reviews)
 train_pos, train_neg, test_pos, test_neg = pp.load_all_data_files(num_reviews)
 
 # Make the 90/10 data split instead of default 50/50
-train_pos, test_pos = utils.split_data(train_pos, test_pos)
+if train_positive:
+    train, test = utils.split_data(train_pos, test_pos)
+else:
+    train, test = utils.split_data(train_neg, test_neg)
 
 # Convert to sentence level dataset
-train_X = utils.make_language_model_sentence_dataset(train_pos, w2i)
-test_X = utils.make_language_model_sentence_dataset(test_pos, w2i)
+train_X = utils.make_language_model_sentence_dataset(train, w2i)
+test_X = utils.make_language_model_sentence_dataset(test, w2i)
 
 num_samples = len(train_X)
 
@@ -111,11 +116,9 @@ def cBLSTM_merge(tensor_list):
     return merged_tensor
 
 
-model_name = "./model/Dec-4-cBLSTM-pos.model"
-# model_name = "./model/TEST_ONLY_ONE_BATCH_cBLSTM-pos-LM-32.hdf5"
+model_name = "./model/" + model_name + ".model"
 generate_model = True
 if generate_model:
-    # define LSTM
     print("Creating model")
     input = Input(shape=(pp.max_sent_length,), name="Input_list_of_word_ids")
 
@@ -144,17 +147,13 @@ if generate_model:
 
     model = Model(inputs=input, outputs=softmax)
 
-    # Use a SGD optimizer so that learning rate and momentum can be defined
-    # sgd = SGD(lr=0.01, momentum=0.9)
-    # Actually use the adam instead, because fixed learning rate is soooo slow.
-
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['categorical_accuracy'])
     print(model.summary())
 
     # Callback to save model between epochs
-    checkpointer = ModelCheckpoint(filepath='./model/Dec-4-cBLSTM-pos-LM-{epoch:02d}.hdf5', verbose=1)
+    checkpointer = ModelCheckpoint(filepath='./model/' + model_name + '{epoch:02d}.hdf5', verbose=1)
 
     # train model
     model.fit_generator(data_generator(),
@@ -167,23 +166,3 @@ if generate_model:
     model.save(model_name)
 else:
     model = load_model(model_name)
-
-
-def extract_probabilities_from_sentence(sentence, prediction):
-    probabilities = []
-    for i, word_id in enumerate(sentence):
-        if word_id == 0:
-            break
-        probabilities.append(prediction[i][int(word_id)])
-    return probabilities
-
-
-predictions = model.predict(train_X[0:20])
-
-for k in range(len(predictions)):
-    print("--------- "+str(k)+" ---------")
-    print("Input:", pp.ids_to_sentence(train_X[k], i2w))
-    print("Prediction", pp.one_hots_to_sentence(predictions[k], i2w))
-    print("Sentence perplexity", utils.sentence_perplexity(
-        extract_probabilities_from_sentence(train_X[k], predictions[k])
-    ))
