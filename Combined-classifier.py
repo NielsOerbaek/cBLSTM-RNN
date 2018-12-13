@@ -65,11 +65,11 @@ def classify_review_by_lm(review, pos_prediction, neg_prediction):
     if delta < 0:
         if delta < p_bottom:
             return 1.0
-        return p_map_bottom(delta)
+        return float(p_map_bottom(delta))
     else:
         if delta > p_top:
             return 0.0
-        return p_map_top(delta)
+        return float(p_map_top(delta))
 
 
 def get_perplexities(review, pos_prediction, neg_prediction):
