@@ -98,6 +98,26 @@ def from_lm_to_bc_dataset(positive_sentences, negative_sentences):
     return X, y
 
 
+def flatten_dataset(reviews):
+    sentences = []
+    groups = []
+    for r in reviews:
+        groups.append(len(r))
+        for s in r:
+            sentences.append(s)
+    return sentences, groups
+
+
+def unflatten_dataset(predictions, groups):
+    reviews = []
+    i = 0
+    for g in groups:
+        r = predictions[i:i+g]
+        reviews.append(r)
+        i += g
+    return reviews
+
+
 # Perplexity functions
 def perplexity(review):
     log_sum = 0

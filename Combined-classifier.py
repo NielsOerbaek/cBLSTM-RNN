@@ -96,9 +96,17 @@ def classify_review_by_bc(review, predictions):
 print("Calibrating perplexity weights...")
 p_bottom = 1000000000
 p_top = -10000000000
-for i in range(len(train_X[:10])):
-    pos_predictions = positive_LM.predict(train_X[i], verbose=2)
-    neg_predictions = negative_LM.predict(train_X[i], verbose=2)
+
+# Flatten, predict and unflatten
+sents, groups = utils.flatten_dataset(train_X)
+pos_preds = positive_LM.predict(sents, verbose=1)
+pos_review_preds = utils.unflatten_dataset(pos_preds, groups)
+neg_preds = negative_LM.predict(sents, verbose=1)
+neg_review_preds = utils.unflatten_dataset(neg_preds, groups)
+
+for i in range(len(train_X[:1000])):
+    pos_predictions = pos_review_preds[i]
+    neg_predictions = neg_review_preds[i]
 
     pos_p, neg_p = get_perplexities(train_X[i], pos_predictions, neg_predictions)
     delta = pos_p - neg_p
@@ -115,10 +123,21 @@ BC_hits = 0
 Comb_hits = 0
 samples = len(test_X)
 print("Classifying...")
+
+# Flatten, predict and unflatten
+sents, groups = utils.flatten_dataset(test_X)
+pos_preds = positive_LM.predict(sents, verbose=1)
+pos_review_preds = utils.unflatten_dataset(pos_preds, groups)
+neg_preds = negative_LM.predict(sents, verbose=1)
+neg_review_preds = utils.unflatten_dataset(neg_preds, groups)
+bc_preds = binary_classifier.predict(sents, verbose=1)
+bc_review_preds = utils.unflatten_dataset(bc_preds, groups)
+
+
 for i in range(samples):
-    pos_predictions = positive_LM.predict(test_X[i], verbose=2)
-    neg_predictions = negative_LM.predict(test_X[i], verbose=2)
-    bc_predictions = binary_classifier.predict(test_X[i], verbose=2)
+    pos_predictions = pos_review_preds[i]
+    neg_predictions = neg_review_preds[i]
+    bc_predictions = bc_review_preds[i]
 
     LM_classification = classify_review_by_lm(test_X[i], pos_predictions, neg_predictions)
     BC_classification = classify_review_by_bc(test_X[i], bc_predictions)
