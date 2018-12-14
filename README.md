@@ -9,6 +9,8 @@ To train the models, you need to download the Stanford IMDB dataset, found [here
 
 Make sure you have all the necesarry libraries to run it, notably `Keras`, `TensorFlow`, `Nltk`, `Sklearn` and `Numpy`, but Python will let you know if you're missing something.
 
+Before training run `mkdir data` and `mkdir model` to make sure you have the directories to store the data and the models.
+
 ## Training
 To train the **cBLSTM** language models, open up `cBLSTM-Language-Model.py` and make sure the top parameters are set correctly. Here you choose some sizes for the network, whether to train the positive or the negative LM, and chose a filename. Then run the file.
 
