@@ -6,9 +6,9 @@ import prepros as pp
 import utils
 
 model_folder_path = "./model/"
-positive_LM_filename = model_folder_path + "Dec-7-cBLSTM-pos-LM-20.hdf5"
-negative_LM_filename = model_folder_path + "Dec-8-cBLSTM-neg-LM-20.hdf5"
-binary_classifier_filename = model_folder_path + "Dec9-BLSTM-BC-20.hdf5"
+positive_LM_filename = model_folder_path + "LSTM-LM-positive50.hdf5"
+negative_LM_filename = model_folder_path + "LSTM-LM-negative50.hdf5"
+binary_classifier_filename = model_folder_path + "Dec11-BLSTM-BC-05.hdf5"
 num_samples = 0
 
 
@@ -36,10 +36,9 @@ positive_LM = load_model(positive_LM_filename)
 negative_LM = load_model(negative_LM_filename)
 binary_classifier = load_model(binary_classifier_filename)
 
-
 def extract_probabilities_from_sentence(sentence, prediction):
     probabilities = []
-    for i, word_id in enumerate(sentence):
+    for i, word_id in enumerate(sentence[1:]):
         if word_id == 0:
             break
         probabilities.append(prediction[i][int(word_id)])
@@ -65,11 +64,11 @@ def classify_review_by_lm(review, pos_prediction, neg_prediction):
     if delta < 0:
         if delta < p_bottom:
             return 1.0
-        return round(p_map_bottom(delta))
+        return round(float(p_map_bottom(delta)))
     else:
         if delta > p_top:
             return 0.0
-        return round(p_map_top(delta))
+        return round(float(p_map_top(delta)))
 
 
 def get_perplexities(review, pos_prediction, neg_prediction):
@@ -97,6 +96,7 @@ print("Calibrating perplexity weights...")
 p_bottom = 1000000000
 p_top = -10000000000
 for i in range(len(train_X[:1000])):
+    print("Calibrating: ", i+1, "of 1000")
     pos_predictions = positive_LM.predict(train_X[i], verbose=2)
     neg_predictions = negative_LM.predict(train_X[i], verbose=2)
 
