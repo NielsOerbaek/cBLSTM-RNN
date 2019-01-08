@@ -52,6 +52,7 @@ else:
 train_X = utils.make_language_model_sentence_dataset(train, w2i)
 test_X = utils.make_language_model_sentence_dataset(test, w2i)
 
+
 num_samples = len(train_X)
 
 
@@ -67,6 +68,9 @@ def make_y(x_dataset):
         y_dataset[s][y-1] = pp.to_one_hot(0,z)
     return y_dataset
 
+print("Sanity check: Is our samples and labels looking okay?")
+print(pp.ids_to_sentence(train_X[0], i2w).replace("<MASK>",""))
+print(pp.one_hots_to_sentence(make_y([train_X[0]])[0], i2w).replace("<MASK>",""))
 
 def data_generator():
     generator_counter = 0
@@ -85,7 +89,7 @@ print("Shape of train_X:", train_X.shape)
 print("Shape of test_X:", test_X.shape)
 
 
-model_name = "./model/" + model_name + ".model"
+model_file_name = "./model/" + model_name + ".model"
 generate_model = True
 if generate_model:
     print("Creating model")
@@ -125,6 +129,6 @@ if generate_model:
                         callbacks=[checkpointer],
                         max_queue_size=5)
 
-    model.save(model_name)
+    model.save(model_file_name)
 else:
-    model = load_model(model_name)
+    model = load_model(model_file_name)

@@ -38,6 +38,8 @@ binary_classifier = load_model(binary_classifier_filename)
 
 def extract_probabilities_from_sentence(sentence, prediction):
     probabilities = []
+    print("full:", sentence)
+    print("shifted:", sentence[1:])
     for i, word_id in enumerate(sentence[1:]):
         if word_id == 0:
             break
