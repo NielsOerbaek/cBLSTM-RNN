@@ -116,7 +116,7 @@ def cBLSTM_merge(tensor_list):
     return merged_tensor
 
 
-model_name = "./model/" + model_name + ".model"
+model_filename = "./model/" + model_name + ".model"
 generate_model = True
 if generate_model:
     print("Creating model")
@@ -163,6 +163,6 @@ if generate_model:
                         callbacks=[checkpointer],
                         max_queue_size=5)
 
-    model.save(model_name)
+    model.save(model_filename)
 else:
-    model = load_model(model_name)
+    model = load_model(model_filename)

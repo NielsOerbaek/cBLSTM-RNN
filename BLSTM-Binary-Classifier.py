@@ -59,7 +59,7 @@ print("Shape of test y-data: ", test_y.shape)
 print("--------------------------------------")
 
 
-model_name = "./model/"+model_name+".model"
+model_filename = "./model/"+model_name+".model"
 generate_model = True
 if generate_model:
     # define LSTM
@@ -80,6 +80,6 @@ if generate_model:
     model.fit(train_X, train_y, epochs=20, batch_size=100, verbose=1,
               callbacks=[checkpointer], validation_data=(test_X[0:1000], test_y[0:1000]))
 
-    model.save(model_name)
+    model.save(model_filename)
 else:
-    model = load_model(model_name)
+    model = load_model(model_filename)
