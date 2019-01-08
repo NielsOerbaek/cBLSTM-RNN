@@ -79,6 +79,17 @@ def make_language_model_sentence_dataset(data1, w2i):
     return x
 
 
+def make_language_model_sentence_dataset_nltk(data1):
+    x = []
+    for i, review in enumerate(data1):
+        for j in review:
+            j = list(filter(lambda w: w != "<MASK>", j)) 
+            x.append(np.array(j))
+    # Shuffle for good orders sake
+    x = shuffle(np.array(x), random_state=420)
+    return x
+
+
 def from_lm_to_bc_dataset(positive_sentences, negative_sentences):
     X = []
     y = []
@@ -99,7 +110,8 @@ def perplexity(review):
     for sentence in review:
         size += len(sentence)
         for wordProb in sentence:
-            log_sum += math.log(wordProb)
+            if wordProb == 0: size -= 1
+            else: log_sum += math.log(wordProb)
     # return math.exp(sum)**(-1/size)
     return log_sum / (-size)
 
