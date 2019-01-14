@@ -12,9 +12,6 @@ import prepros as pp
 import utils
 
 num_reviews = 100
-batch_size = 100
-glove_size = 100
-hidden_size = 300
 train_positive = True
 model_name = "NLTK-LM-positive-small"
 

@@ -11,12 +11,9 @@ from nltk.lm import KneserNeyInterpolated
 import prepros as pp
 import utils
 
-num_reviews = 100
-batch_size = 100
-glove_size = 100
-hidden_size = 300
-train_positive = True
-model_name = "Kneser-Ney-LM-positive-small"
+num_reviews = 0
+train_positive = False
+model_name = "Kneser-Ney-LM-negative"
 
 # -- Preprocessing
 print("Making vocab dicts of size " + str(pp.vocab_size))

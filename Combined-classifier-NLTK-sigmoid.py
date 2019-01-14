@@ -5,6 +5,7 @@ from sklearn.utils import shuffle
 from scipy.interpolate import interp1d
 import pickle
 import numpy as np
+import math
 
 import prepros as pp
 import utils
@@ -12,7 +13,7 @@ import utils
 model_folder_path = "./model/"
 positive_LM_filename = model_folder_path + "NLTK-LM-positive"
 negative_LM_filename = model_folder_path + "NLTK-LM-negative"
-binary_classifier_filename = model_folder_path + "Dec11-BLSTM-BC-05.hdf5"
+binary_classifier_filename = model_folder_path + "BLSTM-Glove-300-05.hdf5"
 num_samples = 0
 
 print("models used:", positive_LM_filename, negative_LM_filename, binary_classifier_filename)
@@ -104,6 +105,7 @@ def classify_review_by_bc(review, predictions):
     avg_pred = sum(probs) / len(probs)
     return avg_pred[0]
 
+def our_sigmoid(x): return 1/(1+math.exp(20*(-x+0.5)))
 
 train_limit = 5000
 
@@ -135,7 +137,7 @@ print("Classifying...")
 for i in range(samples):
     bc_predictions = binary_classifier.predict(test_X[i], verbose=2)
 
-    LM_classification = classify_review_by_lm(test_X[i])
+    LM_classification = our_sigmoid(classify_review_by_lm(test_X[i]))
     BC_classification = classify_review_by_bc(test_X[i], bc_predictions)
     classification = int(round((LM_classification + BC_classification) / 2))
 

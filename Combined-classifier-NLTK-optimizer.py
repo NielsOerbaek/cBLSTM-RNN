@@ -12,7 +12,7 @@ import utils
 model_folder_path = "./model/"
 positive_LM_filename = model_folder_path + "NLTK-LM-positive"
 negative_LM_filename = model_folder_path + "NLTK-LM-negative"
-binary_classifier_filename = model_folder_path + "Dec11-BLSTM-BC-05.hdf5"
+binary_classifier_filename = model_folder_path + "BLSTM-Glove-300-05.hdf5"
 num_samples = 0
 
 print("models used:", positive_LM_filename, negative_LM_filename, binary_classifier_filename)
@@ -65,7 +65,7 @@ def extract_probabilities_from_review(review, lm):
     return probabilities
 
 
-def classify_review_by_lm(review):
+def classify_review_by_lm(review, pb, pt):
     pos_probs = extract_probabilities_from_review(review, positive_LM)
     neg_probs = extract_probabilities_from_review(review, negative_LM)
 
@@ -74,12 +74,16 @@ def classify_review_by_lm(review):
 
     delta = pos_perplexity - neg_perplexity
 
+    # Init interpolation mappers
+    p_map_bottom = interp1d([pb, 0], [1, 0.5])
+    p_map_top = interp1d([0, pt], [0.5, 0])
+
     if delta < 0:
-        if delta < p_bottom:
+        if delta < pb:
             return 1.0
         return float(p_map_bottom(delta))
     else:
-        if delta > p_top:
+        if delta > pt:
             return 0.0
         return float(p_map_top(delta))
 
@@ -105,37 +109,75 @@ def classify_review_by_bc(review, predictions):
     return avg_pred[0]
 
 
-train_limit = 5000
+def evaluate_p_maps(factor):
+    pb = p_bottom*f
+    pt = p_top*f
+    hits = 0
+    samples = len(train_predictions)
+    for p in train_predictions:
+        LM_classification = classify_review_by_lm(p[0], pb, pt)
+        classification = int(round((LM_classification + p[1]) / 2))
+        if p[2] == classification:
+            hits += 1
+    score = hits / samples
+    print("Optimization result - ", "Factor: ", factor, "Acc:", score)
+    return score
+
+
+cali_limit = 1000
 
 print("Calibrating perplexity weights...")
 p_bottom = 1000000000
 p_top = -10000000000
-for i in range(len(train_X[:train_limit])):
+for i in range(len(train_X[:cali_limit])):
     pos_p, neg_p = get_perplexities(train_X[i])
     delta = pos_p - neg_p
 
     p_bottom = min(p_bottom, delta)
     p_top = max(p_top, delta)
-    if i % 100 == 0: print("Calibrating:", i, "of", train_limit)
+    if i % 100 == 0: print("Calibrating:", i, "of", cali_limit)
 
-# Init interpolation mappers
-p_bottom = p_bottom
-p_top = p_top
-p_map_bottom = interp1d([p_bottom, 0], [1, 0.5])
-p_map_top = interp1d([0, p_top], [0.5, 0])
 
 print("Loading BLSTM-BC model")
 binary_classifier = load_model(binary_classifier_filename)
 
+extra_train = 1000
+print("Using", extra_train, "of", len(test_X), "samples for interpolation optimization")
+print("Generating predictions for optimization...")
+train_predictions = []
+for i in range(len(test_X[-extra_train:])):
+    bc_predictions = binary_classifier.predict(test_X[i], verbose=2)
+
+    LM_classification = classify_review_by_lm(test_X[i], p_bottom, p_top)
+    BC_classification = classify_review_by_bc(test_X[i], bc_predictions)
+    train_predictions.append((test_X[i], BC_classification, test_y[i]))
+    if i % 50 == 0: print("Generating:", i, "of", extra_train)
+
+print("Before optimization:", "Bottom:", p_bottom, "Top:", p_top)
+f = 1.0
+old_score = evaluate_p_maps(f)
+new_score = evaluate_p_maps(f*0.5)
+
+while new_score >= old_score:
+    f = f*0.5
+    old_score = new_score
+    new_score = evaluate_p_maps(f*0.5)
+
+p_bottom *= f
+p_top *= f
+print("After optimization:", "Bottom:", p_bottom, "Top:", p_top)
+
 LM_hits = 0
 BC_hits = 0
 Comb_hits = 0
+test_X = test_X[:extra_train]
+test_y = test_y[:extra_train]
 samples = len(test_X)
 print("Classifying...")
 for i in range(samples):
     bc_predictions = binary_classifier.predict(test_X[i], verbose=2)
 
-    LM_classification = classify_review_by_lm(test_X[i])
+    LM_classification = classify_review_by_lm(test_X[i], p_bottom, p_top)
     BC_classification = classify_review_by_bc(test_X[i], bc_predictions)
     classification = int(round((LM_classification + BC_classification) / 2))
 

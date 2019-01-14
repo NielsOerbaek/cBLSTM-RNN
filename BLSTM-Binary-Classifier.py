@@ -15,8 +15,8 @@ import utils
 # Setting num_samples to zero means we want all the samples.
 num_samples = 0
 lstm_memory_cells = 300
-glove_size = 100
-model_name = "My-BLSTM"
+glove_size = 300
+model_name = "BLSTM-Glove-300"
 
 # -- Preprocessing
 # Vocab files
@@ -59,7 +59,7 @@ print("Shape of test y-data: ", test_y.shape)
 print("--------------------------------------")
 
 
-model_name = "./model/"+model_name+".model"
+model_filename = "./model/"+model_name+".model"
 generate_model = True
 if generate_model:
     # define LSTM
@@ -78,8 +78,8 @@ if generate_model:
 
     # train LSTM
     model.fit(train_X, train_y, epochs=20, batch_size=100, verbose=1,
-              callbacks=[checkpointer], validation_data=(test_X[0:1000], test_y[0:1000]))
+              callbacks=[checkpointer], validation_data=(test_X, test_y))
 
     model.save(model_name)
 else:
-    model = load_model(model_name)
+    model = load_model(model_filename)
