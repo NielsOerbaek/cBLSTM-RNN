@@ -32,7 +32,7 @@ def generate_embedding_matrix(glove_filename, glove_size, w2i):
 
 # Use this function to re-split the positive or negative data from 50/50 to 90/10
 def split_data(data1, data2):
-    return train_test_split((data1 + data2), test_size=0.1, shuffle=False)
+    return train_test_split((data1 + data2), test_size=0.1, shuffle=True, random_state=1234)
 
 
 def append_sentences(x_array, y_array, data, label, w2i):

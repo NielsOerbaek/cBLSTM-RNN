@@ -13,7 +13,7 @@ import utils
 
 num_reviews = 100
 train_positive = True
-model_name = "NLTK-LM-positive-small"
+model_name = "Alt-NLTK-LM-positive-small"
 
 # -- Preprocessing
 print("Making vocab dicts of size " + str(pp.vocab_size))
