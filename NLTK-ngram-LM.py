@@ -11,9 +11,9 @@ from nltk.lm import MLE
 import prepros as pp
 import utils
 
-num_reviews = 100
-train_positive = True
-model_name = "Alt-NLTK-LM-positive-small"
+num_reviews = 0
+train_positive = False
+model_name = "Alt-NLTK-LM-negative"
 
 # -- Preprocessing
 print("Making vocab dicts of size " + str(pp.vocab_size))

@@ -11,9 +11,9 @@ import prepros as pp
 import utils
 
 model_folder_path = "./model/"
-positive_LM_filename = model_folder_path + "NLTK-LM-positive"
-negative_LM_filename = model_folder_path + "NLTK-LM-negative"
-binary_classifier_filename = model_folder_path + "BLSTM-Glove-300-05.hdf5"
+positive_LM_filename = model_folder_path + "Alt-NLTK-LM-positive"
+negative_LM_filename = model_folder_path + "Alt-NLTK-LM-negative"
+binary_classifier_filename = model_folder_path + "Alt-BLSTM-BC-05.hdf5"
 num_samples = 0
 
 print("models used:", positive_LM_filename, negative_LM_filename, binary_classifier_filename)

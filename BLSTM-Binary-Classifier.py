@@ -14,8 +14,8 @@ import utils
 
 # Setting num_samples to zero means we want all the samples.
 num_samples = 0
-lstm_memory_cells = 100
-glove_size = 300
+lstm_memory_cells = 300
+glove_size = 100
 model_name = "Alt-BLSTM-BC"
 
 # -- Preprocessing
