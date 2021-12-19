@@ -1,5 +1,5 @@
-# Natural Language Processing and Deep Learning - Group1
-_- Reimplementing the cBLSTM Language Models_
+# Python-implementation of Contextual BLSTM Language Models
+_Deep Learning and Natural Language Processing (Group 1)_
 
 ### Introduction
 This repository contains a partial implementaion of the model presented in [Mousa & Schuller (2017)](http://aclweb.org/anthology/E/E17/E17-1096.pdf) implemented in Python using Keras and TensorFlow.
